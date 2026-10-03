@@ -10,6 +10,8 @@ const Schedule = lazy(() => import('./pages/Schedule'));
 const Students = lazy(() => import('./pages/Students'));
 const Assessment = lazy(() => import('./pages/Assessment'));
 const Checkin = lazy(() => import('./pages/Checkin'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Grants = lazy(() => import('./pages/Grants'));
 
 function PageFallback() {
   return (
@@ -38,6 +40,8 @@ export default function App() {
           <Route path="students" element={<Students />} />
           <Route path="assessment" element={<Assessment />} />
           <Route path="checkin" element={<Checkin />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="grants" element={<Grants />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

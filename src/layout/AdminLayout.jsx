@@ -8,15 +8,19 @@ import {
   CheckCircleOutlined,
   UserOutlined,
   LogoutOutlined,
+  DashboardOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { getAdminInfo, clearAuth } from '../cloudbase';
 
 const { Sider, Header, Content } = Layout;
 
 const menuItems = [
+  { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
   { key: '/schedule', icon: <CalendarOutlined />, label: '排课管理' },
   { key: '/students', icon: <TeamOutlined />, label: '学生分析' },
   { key: '/assessment', icon: <FundOutlined />, label: '测评报告' },
+  { key: '/grants', icon: <SafetyOutlined />, label: '测评授权' },
   { key: '/checkin', icon: <CheckCircleOutlined />, label: '打卡管理' },
 ];
 

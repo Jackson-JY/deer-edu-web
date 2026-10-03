@@ -40,6 +40,16 @@ export const adminAssessment = (data) => callFunction('adminAssessment', data);
 /** AI 智能测评报告：能力图谱 + 大模型分析 */
 export const aiGenerateReport = (data) => callFunction('aiGenerateReport', data);
 
+// ---------- 测评授权 ----------
+
+/** 测评授权管理：列表 / 授权 / 吊销 / 恢复 */
+export const assessmentGrant = (data) => callFunction('assessmentGrant', data);
+
+// ---------- 数据看板 ----------
+
+/** 统计看板：概览 / 14天趋势 / 操作记录 / 访问记录 */
+export const adminDashboard = (data) => callFunction('adminDashboard', data);
+
 // ---------- 打卡 ----------
 
 /** 发布/保存每日打卡任务（管理员） */
@@ -58,6 +68,8 @@ export default {
   adminStats,
   adminAssessment,
   aiGenerateReport,
+  assessmentGrant,
+  adminDashboard,
   saveDailyTask,
   getDailyTasks,
 };
