@@ -17,6 +17,16 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'antd-vendor': ['antd', '@ant-design/icons'],
+          'echarts-vendor': ['echarts', 'echarts-for-react'],
+          'cloudbase-vendor': ['@cloudbase/js-sdk'],
+        },
+      },
+    },
   },
 });

@@ -1,0 +1,516 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  Button,
+  DatePicker,
+  Select,
+  Form,
+  Input,
+  InputNumber,
+  Space,
+  Table,
+  Spin,
+  Empty,
+  message,
+} from 'antd';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  CopyOutlined,
+  ReloadOutlined,
+  TrophyOutlined,
+  FireOutlined,
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { getDailyTasks, saveDailyTask, adminStats } from '../../api';
+
+const { RangePicker } = DatePicker;
+
+const SUBJECT_OPTIONS = [
+  { label: '听力', value: 'listening' },
+  { label: '阅读', value: 'reading' },
+  { label: '写作', value: 'writing' },
+  { label: '口语', value: 'speaking' },
+];
+
+const SUBJECT_LABEL = {
+  listening: '听力',
+  reading: '阅读',
+  writing: '写作',
+  speaking: '口语',
+};
+
+/** 获取周一的日期 */
+function getMonday(d) {
+  const date = dayjs(d);
+  const day = date.day(); // 0=Sunday, 1=Monday...
+  const diff = day === 0 ? -6 : 1 - day;
+  return date.add(diff, 'day');
+}
+
+/** 格式化日期 YYYY-MM-DD */
+function fmtDate(d) {
+  return d.format('YYYY-MM-DD');
+}
+
+export default function Checkin() {
+  const [form] = Form.useForm();
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [historyList, setHistoryList] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // 周榜
+  const [weekRange, setWeekRange] = useState([getMonday(dayjs()), getMonday(dayjs()).add(6, 'day')]);
+  const [weekLoading, setWeekLoading] = useState(false);
+  const [weekRows, setWeekRows] = useState([]);
+
+  // 加载指定日期的任务
+  const loadTask = useCallback(
+    async (date) => {
+      setLoading(true);
+      try {
+        const res = await getDailyTasks({ action: 'getByDate', date: fmtDate(date) });
+        if (res.success && res.task) {
+          const items = (res.task.items || []).map((it) => ({
+            id: it.id,
+            subject: it.subject,
+            content: it.content,
+            suggestMinutes: it.suggestMinutes,
+          }));
+          form.setFieldsValue({ items: items.length ? items : [{}] });
+        } else {
+          form.setFieldsValue({ items: [{}] });
+        }
+      } catch (e) {
+        message.error('加载任务失败: ' + e.message);
+        form.setFieldsValue({ items: [{}] });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [form]
+  );
+
+  // 加载历史记录（复制用）
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await getDailyTasks({ action: 'getHistory', limit: 14 });
+      if (res.success) {
+        setHistoryList(res.history || []);
+      }
+    } catch (e) {
+      // 静默失败，历史记录是辅助功能
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  // 加载周榜
+  const loadWeekStats = useCallback(async (range) => {
+    setWeekLoading(true);
+    try {
+      const res = await adminStats({
+        action: 'checkinWeekly',
+        weekStart: fmtDate(range[0]),
+        weekEnd: fmtDate(range[1]),
+      });
+      if (res.success) {
+        setWeekRows(res.rows || []);
+      } else {
+        setWeekRows([]);
+      }
+    } catch (e) {
+      message.error('加载周榜失败: ' + e.message);
+      setWeekRows([]);
+    } finally {
+      setWeekLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTask(selectedDate);
+  }, [selectedDate, loadTask]);
+
+  useEffect(() => {
+    loadHistory();
+    loadWeekStats(weekRange);
+  }, [loadHistory, loadWeekStats, weekRange]);
+
+  // 保存任务
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      const items = (values.items || []).filter((it) => it && it.content && it.content.trim());
+      if (items.length === 0) {
+        message.warning('至少需要一项任务内容');
+        return;
+      }
+      setSaving(true);
+      const res = await saveDailyTask({
+        action: 'save',
+        date: fmtDate(selectedDate),
+        items: items.map((it, i) => ({
+          id: it.id || `t${i + 1}`,
+          subject: it.subject || 'listening',
+          content: it.content.trim(),
+          suggestMinutes: it.suggestMinutes || 30,
+        })),
+      });
+      if (res.success) {
+        message.success(res.message || '已保存');
+        loadHistory(); // 刷新历史
+      } else {
+        message.error(res.error || '保存失败');
+      }
+    } catch (e) {
+      if (e.errorFields) return; // 表单校验错误，不提示
+      message.error('保存失败: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 复制昨日
+  const handleCopyYesterday = async () => {
+    const yesterday = selectedDate.subtract(1, 'day');
+    try {
+      const res = await getDailyTasks({ action: 'getByDate', date: fmtDate(yesterday) });
+      if (res.success && res.task) {
+        const items = (res.task.items || []).map((it) => ({
+          id: `t${Date.now()}_${Math.random()}`,
+          subject: it.subject,
+          content: it.content,
+          suggestMinutes: it.suggestMinutes,
+        }));
+        form.setFieldsValue({ items: items.length ? items : [{}] });
+        message.success(`已复制 ${fmtDate(yesterday)} 的 ${items.length} 项任务`);
+      } else {
+        message.info(`${fmtDate(yesterday)} 没有已发布任务`);
+      }
+    } catch (e) {
+      message.error('复制失败: ' + e.message);
+    }
+  };
+
+  // 从历史记录复制
+  const handleCopyFromHistory = async (dateStr) => {
+    if (!dateStr) return;
+    try {
+      const res = await getDailyTasks({ action: 'getByDate', date: dateStr });
+      if (res.success && res.task) {
+        const items = (res.task.items || []).map((it) => ({
+          id: `t${Date.now()}_${Math.random()}`,
+          subject: it.subject,
+          content: it.content,
+          suggestMinutes: it.suggestMinutes,
+        }));
+        form.setFieldsValue({ items: items.length ? items : [{}] });
+        message.success(`已复制 ${dateStr} 的 ${items.length} 项任务`);
+      } else {
+        message.info(`${dateStr} 没有任务`);
+      }
+    } catch (e) {
+      message.error('复制失败: ' + e.message);
+    }
+  };
+
+  // 建议总时长（定时检测表单变化）
+  const [totalMin, setTotalMin] = useState(0);
+  useEffect(() => {
+    const update = () => {
+      const items = form.getFieldValue('items') || [];
+      const t = items.reduce(
+        (sum, it) => sum + (it && it.suggestMinutes ? Number(it.suggestMinutes) : 0),
+        0
+      );
+      setTotalMin(t);
+    };
+    update();
+    const timer = setInterval(update, 500);
+    return () => clearInterval(timer);
+  }, [form]);
+
+  // 生成表彰文案
+  const generatePraiseText = () => {
+    if (weekRows.length === 0) {
+      message.info('暂无打卡数据');
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    const start = fmtDate(weekRange[0]);
+    const end = fmtDate(weekRange[1]);
+    // 格式化日期为 M.D
+    const fmt = (s) => {
+      const [y, m, d] = s.split('-');
+      return `${parseInt(m)}.${parseInt(d)}`;
+    };
+    let text = `🏆 Deer Edu 本周学习光荣榜（${fmt(start)}-${fmt(end)}）\n`;
+    weekRows.forEach((row, i) => {
+      if (row.checkinDays === 0 && row.studyHours === 0) return;
+      const medal = medals[i] || '';
+      text += `${medal} ${row.nickName}：打卡${row.checkinDays}天 · 学习${row.studyHours}小时`;
+      if (row.streak > 0) text += ` · 连续${row.streak}天`;
+      text += '\n';
+    });
+    text += '坚持就是胜利，下周继续加油！';
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => message.success('表彰文案已复制，可直接粘贴到群聊'))
+      .catch(() => {
+        // 降级：用 textarea
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        message.success('表彰文案已复制');
+      });
+  };
+
+  const weekColumns = [
+    {
+      title: '排名',
+      key: 'rank',
+      width: 60,
+      render: (_, __, i) => {
+        const medals = ['🥇', '🥈', '🥉'];
+        return <span style={{ fontSize: 16 }}>{medals[i] || i + 1}</span>;
+      },
+    },
+    {
+      title: '学生',
+      dataIndex: 'nickName',
+      key: 'nickName',
+      width: 100,
+    },
+    {
+      title: '打卡天数',
+      dataIndex: 'checkinDays',
+      key: 'checkinDays',
+      width: 90,
+      sorter: (a, b) => a.checkinDays - b.checkinDays,
+      render: (v) => (
+        <span style={{ color: v > 0 ? '#12B7A8' : '#ccc', fontWeight: v > 0 ? 600 : 400 }}>
+          {v}
+        </span>
+      ),
+    },
+    {
+      title: '完成项数',
+      dataIndex: 'completedItems',
+      key: 'completedItems',
+      width: 90,
+      sorter: (a, b) => a.completedItems - b.completedItems,
+    },
+    {
+      title: '学习时长',
+      key: 'studyHours',
+      width: 100,
+      sorter: (a, b) => a.studyHours - b.studyHours,
+      render: (_, r) => (
+        <span style={{ color: r.studyHours > 0 ? '#12B7A8' : '#ccc' }}>
+          {r.studyHours}h
+        </span>
+      ),
+    },
+    {
+      title: '连续天数',
+      dataIndex: 'streak',
+      key: 'streak',
+      width: 90,
+      sorter: (a, b) => a.streak - b.streak,
+      render: (v) =>
+        v > 0 ? (
+          <span style={{ color: '#f5a623', fontWeight: 600 }}>
+            <FireOutlined /> {v}
+          </span>
+        ) : (
+          <span style={{ color: '#ccc' }}>0</span>
+        ),
+    },
+  ];
+
+  return (
+    <div className="checkin-page">
+      {/* 发布区 */}
+      <Card
+        title="每日打卡任务发布"
+        extra={
+          <Space>
+            <DatePicker
+              value={selectedDate}
+              onChange={(d) => d && setSelectedDate(d)}
+              allowClear={false}
+            />
+          </Space>
+        }
+        style={{ marginBottom: 24 }}
+      >
+        <Spin spinning={loading}>
+          <div style={{ marginBottom: 16 }}>
+            <Space>
+              <Button icon={<CopyOutlined />} onClick={handleCopyYesterday}>
+                复制昨日
+              </Button>
+              <Select
+                placeholder="从历史记录复制"
+                style={{ width: 200 }}
+                loading={historyLoading}
+                onChange={handleCopyFromHistory}
+                allowClear
+                options={historyList.map((h) => ({
+                  label: `${h.date}（${h.items.length}项 · ${h.totalMinutes}分钟）`,
+                  value: h.date,
+                }))}
+              />
+            </Space>
+          </div>
+
+          <Form form={form} initialValues={{ items: [{}] }}>
+            <Form.List name="items">
+              {(fields, { add, remove }) => (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <div
+                      key={key}
+                      style={{
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'flex-start',
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'subject']}
+                        rules={[{ required: true, message: '请选择科目' }]}
+                        style={{ width: 100, flexShrink: 0 }}
+                      >
+                        <Select
+                          placeholder="科目"
+                          options={SUBJECT_OPTIONS}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'content']}
+                        rules={[{ required: true, message: '请输入任务内容' }]}
+                        style={{ flex: 1 }}
+                      >
+                        <Input placeholder="任务内容，如：精听剑18 Test1 Part3 并跟读" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'suggestMinutes']}
+                        rules={[{ required: true, message: '请填写建议分钟' }]}
+                        style={{ width: 130, flexShrink: 0 }}
+                      >
+                        <InputNumber
+                          placeholder="建议分钟"
+                          min={1}
+                          max={300}
+                          addonAfter="分钟"
+                          style={{ width: '100%' }}
+                        />
+                      </Form.Item>
+                      {fields.length > 1 && (
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => remove(name)}
+                          style={{ flexShrink: 0, marginTop: 5 }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  {fields.length < 4 && (
+                    <Button
+                      type="dashed"
+                      onClick={() => add({ subject: 'listening', suggestMinutes: 30 })}
+                      icon={<PlusOutlined />}
+                      style={{ width: 200 }}
+                    >
+                      添加任务项
+                    </Button>
+                  )}
+                </>
+              )}
+            </Form.List>
+          </Form>
+
+          <div
+            style={{
+              marginTop: 16,
+              padding: '8px 16px',
+              background: '#f6ffed',
+              borderRadius: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ color: '#52c41a' }}>
+              建议总时长：<strong>{totalMin}</strong> 分钟
+              {totalMin > 0 && <span>（约 {Math.round((totalMin / 60) * 10) / 10} 小时）</span>}
+            </span>
+            <Button
+              type="primary"
+              loading={saving}
+              onClick={handleSave}
+              style={{ background: '#12B7A8' }}
+            >
+              保存并发布
+            </Button>
+          </div>
+        </Spin>
+      </Card>
+
+      {/* 周表彰区 */}
+      <Card
+        title="周打卡统计"
+        extra={
+          <Space>
+            <RangePicker
+              value={weekRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  setWeekRange(dates);
+                }
+              }}
+              allowClear={false}
+            />
+            <Button icon={<ReloadOutlined />} onClick={() => loadWeekStats(weekRange)}>
+              刷新
+            </Button>
+            <Button
+              type="primary"
+              icon={<TrophyOutlined />}
+              onClick={generatePraiseText}
+              style={{ background: '#12B7A8' }}
+            >
+              生成表彰文案
+            </Button>
+          </Space>
+        }
+      >
+        <Table
+          columns={weekColumns}
+          dataSource={weekRows}
+          rowKey="_id"
+          loading={weekLoading}
+          pagination={false}
+          size="middle"
+          locale={{
+            emptyText: <Empty description="暂无打卡数据" />,
+          }}
+        />
+      </Card>
+    </div>
+  );
+}

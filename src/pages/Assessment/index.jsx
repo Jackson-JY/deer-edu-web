@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Row, Col, Select, Statistic, Tag, Empty, Descriptions, Collapse, List, message, Spin, Button, Table, Typography, Divider, Progress } from 'antd';
+import { ThunderboltOutlined, AimOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { adminAssessment, aiGenerateReport } from '../../api';
 import { getTempFileURL } from '../../cloudbase';
@@ -10,24 +11,42 @@ const { Paragraph, Text } = Typography;
 const SKILLS = ['listening', 'reading', 'writing', 'speaking'];
 const SKILL_NAMES = { listening: '听力', reading: '阅读', writing: '写作', speaking: '口语' };
 const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-const CEFR_COLOR = { A1: '#c9cdd4', A2: '#a7fbf5', B1: '#7ed6c4', B2: '#12b7a8', C1: '#0d9488', C2: '#065f46' };
+// CEFR 色阶：中性灰起步，收敛到品牌薄荷绿
+const CEFR_COLOR = { A1: '#C7C7CC', A2: '#A9E4DD', B1: '#6FCFC3', B2: '#12B7A8', C1: '#0E8C81', C2: '#0A6B62' };
+
+// 图表通用样式
+const AXIS_LABEL = { color: '#8E8E93', fontSize: 11 };
+const SPLIT_LINE = { lineStyle: { color: '#EFEFF2' } };
+const TOOLTIP_CARD = {
+  backgroundColor: '#FFFFFF',
+  borderColor: '#E5E5EA',
+  borderWidth: 1,
+  textStyle: { color: '#1D1D1F', fontSize: 12 },
+  extraCssText: 'box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 10px;',
+};
 
 const radarOption = (levels) => ({
+  tooltip: TOOLTIP_CARD,
   radar: {
     indicator: SKILLS.map((s) => ({ name: SKILL_NAMES[s], max: 5 })),
-    radius: '65%',
-    splitArea: { areaStyle: { color: ['#fafafa', '#f0f2f5'] } },
+    radius: '64%',
+    center: ['50%', '48%'],
+    axisName: { color: '#6E6E73', fontSize: 12 },
+    splitLine: { lineStyle: { color: '#E5E5EA' } },
+    splitArea: { areaStyle: { color: ['#FFFFFF', '#FAFAFB'] } },
+    axisLine: { lineStyle: { color: '#E5E5EA' } },
   },
   series: [
     {
       type: 'radar',
+      symbolSize: 5,
       data: [
         {
           value: SKILLS.map((s) => levels[s] ?? 0),
           name: '能力等级',
-          areaStyle: { color: 'rgba(18,183,168,0.25)' },
-          lineStyle: { color: '#12b7a8' },
-          itemStyle: { color: '#12b7a8' },
+          areaStyle: { color: 'rgba(18,183,168,0.22)' },
+          lineStyle: { color: '#12B7A8', width: 2 },
+          itemStyle: { color: '#12B7A8' },
         },
       ],
     },
@@ -35,38 +54,61 @@ const radarOption = (levels) => ({
 });
 
 const vocabBarOption = (buckets) => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: 50, right: 20, top: 20, bottom: 40 },
-  xAxis: { type: 'category', data: buckets.map((b) => b.label), axisLabel: { rotate: 40 } },
-  yAxis: { type: 'value', minInterval: 1 },
-  series: [{ type: 'bar', data: buckets.map((b) => b.count), itemStyle: { color: '#12b7a8' }, barMaxWidth: 32 }],
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...TOOLTIP_CARD },
+  grid: { left: 46, right: 16, top: 20, bottom: 44 },
+  xAxis: {
+    type: 'category',
+    data: buckets.map((b) => b.label),
+    axisLabel: { ...AXIS_LABEL, rotate: 32 },
+    axisLine: { lineStyle: { color: '#E5E5EA' } },
+    axisTick: { show: false },
+  },
+  yAxis: { type: 'value', minInterval: 1, axisLabel: AXIS_LABEL, splitLine: SPLIT_LINE },
+  series: [
+    {
+      type: 'bar',
+      data: buckets.map((b) => b.count),
+      itemStyle: { color: '#12B7A8', borderRadius: [6, 6, 0, 0] },
+      barMaxWidth: 30,
+    },
+  ],
 });
 
 const cefrPieOption = (cefr) => ({
-  tooltip: { trigger: 'item' },
-  legend: { bottom: 0 },
+  tooltip: { trigger: 'item', ...TOOLTIP_CARD },
+  legend: { bottom: 0, icon: 'circle', textStyle: { color: '#6E6E73' } },
   series: [
     {
       type: 'pie',
-      radius: ['40%', '70%'],
+      radius: ['42%', '68%'],
+      center: ['50%', '44%'],
+      itemStyle: { borderColor: '#FFFFFF', borderWidth: 2 },
       data: CEFR_ORDER.filter((k) => cefr[k]).map((k) => ({
         name: k,
         value: cefr[k],
         itemStyle: { color: CEFR_COLOR[k] },
       })),
-      label: { formatter: '{b}: {c}' },
+      label: { color: '#6E6E73', formatter: '{b} {c}' },
     },
   ],
 });
 
-/** 自评分数 → 颜色（分数越高问题越严重，颜色越红） */
+/** 自评分数 → 颜色（分数越高问题越严重，颜色越红）；Apple 系统色阶 */
 function getScoreColor(score) {
   const s = Number(score) || 0;
-  if (s <= 1) return '#52c41a';
-  if (s <= 2) return '#faad14';
-  if (s <= 3) return '#fa8c16';
-  if (s <= 4) return '#ff7a45';
-  return '#ff4d4f';
+  if (s <= 1) return '#34C759';
+  if (s <= 2) return '#FFCC00';
+  if (s <= 3) return '#FF9500';
+  if (s <= 4) return '#FF6B4A';
+  return '#FF3B30';
+}
+
+/** SOE 百分制评分 → 颜色 */
+function getSoeScoreColor(v) {
+  const n = Number(v) || 0;
+  if (n >= 80) return '#34C759';
+  if (n >= 60) return '#FF9500';
+  return '#FF3B30';
 }
 
 /** 自评分数档位文案 */
@@ -131,6 +173,13 @@ export default function Assessment() {
           });
           setAudioUrls(map);
         }
+        // 回显已保存的 AI 报告（只查缓存，不触发模型）
+        try {
+          const cacheRes = await aiGenerateReport({ studentId, cacheOnly: true });
+          setAiReport(cacheRes.success && cacheRes.cached ? cacheRes : null);
+        } catch (cacheErr) {
+          setAiReport(null);
+        }
       } else {
         message.error(res.error || '加载失败');
       }
@@ -141,14 +190,19 @@ export default function Assessment() {
     }
   }, []);
 
-  const handleGenerateReport = useCallback(async () => {
+  const handleGenerateReport = useCallback(async (force = false) => {
     if (!selectedId) return;
     setAiLoading(true);
     setAiReport(null);
     try {
-      const res = await aiGenerateReport({ studentId: selectedId });
+      const res = await aiGenerateReport({ studentId: selectedId, force });
       if (res.success) {
         setAiReport(res);
+        if (res.cached) {
+          message.success('已加载上次生成的报告');
+        } else {
+          message.success(force ? '已使用最新测评数据重新生成' : 'AI 分析报告已生成并保存');
+        }
       } else {
         message.error(res.error || '生成报告失败');
       }
@@ -194,7 +248,7 @@ export default function Assessment() {
               <List.Item>
                 <div style={{ width: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, color: '#595959', lineHeight: 1.6, flex: 1 }}>{item.text}</span>
+                    <span style={{ fontSize: 13, color: '#6E6E73', lineHeight: 1.6, flex: 1 }}>{item.text}</span>
                     <Tag color={getScoreColor(item.score)} style={{ marginLeft: 8, flexShrink: 0 }}>
                       {item.score} · {getScoreLabel(item.score)}
                     </Tag>
@@ -215,6 +269,62 @@ export default function Assessment() {
       };
     });
   }, [detail]);
+
+  // 整体学习路径建议：短期/长期课程组合（coursePlan 为新结构，learningPath 为旧缓存兜底）
+  const renderCoursePlan = () => {
+    const part2 = aiReport?.part2 || {};
+    const plan = part2.coursePlan;
+    if (plan && ((plan.shortTerm && plan.shortTerm.length) || (plan.longTerm && plan.longTerm.length))) {
+      const groups = [
+        { key: 'st', label: '短期建议', hint: '约 1 个月 · 集中突破最紧迫短板', color: '#12B7A8', items: plan.shortTerm || [] },
+        { key: 'lt', label: '长期规划', hint: '约 2-3 个月 · 系统提升与出分保障', color: '#0A6B62', items: plan.longTerm || [] },
+      ];
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>整体学习路径建议 · 课程组合</Text>
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {groups.map((g) => g.items.length > 0 && (
+              <div key={g.key}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{ background: g.color, color: '#fff', fontSize: 12, fontWeight: 600, padding: '3px 12px', borderRadius: 999, lineHeight: 1.6 }}>
+                    {g.label}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#8E8E93' }}>{g.hint}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {g.items.map((c, i) => (
+                    <div key={i} style={{ background: '#F5FBFA', border: '1px solid #E3F2F0', borderRadius: 12, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#1D1D1F' }}>{c.course}</div>
+                      <div style={{ fontSize: 13, color: '#6E6E73', lineHeight: 1.7, marginTop: 4 }}>{c.reason}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (part2.learningPath && part2.learningPath.length > 0) {
+      return (
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>整体学习路径建议</Text>
+          <div style={{ marginTop: 10 }}>
+            {part2.learningPath.map((item, idx) => (
+              <div key={idx} className="path-step">
+                <span className="path-step-index">{idx + 1}</span>
+                <div>
+                  <div className="path-step-title">{item.title}</div>
+                  <div className="path-step-desc">{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="page-container">
@@ -272,12 +382,12 @@ export default function Assessment() {
             />
             <Button
               type="primary"
-              icon={<span>✨</span>}
+              icon={<ThunderboltOutlined />}
               loading={aiLoading}
               disabled={!selectedId || detailLoading}
-              onClick={handleGenerateReport}
+              onClick={() => handleGenerateReport(!!aiReport)}
             >
-              AI 智能分析
+              {aiReport ? '重新生成' : 'AI 智能分析'}
             </Button>
           </div>
         }
@@ -302,7 +412,7 @@ export default function Assessment() {
                     suffix="词"
                     valueStyle={{ color: '#12b7a8' }}
                   />
-                  {detail.vocab?.cefrLevel && <Tag color="cyan" style={{ marginTop: 8 }}>{detail.vocab.cefrLevel}</Tag>}
+                  {detail.vocab?.cefrLevel && <Tag color="#12B7A8" style={{ marginTop: 8 }}>{detail.vocab.cefrLevel}</Tag>}
                 </Card>
               </Col>
               <Col span={8}>
@@ -313,7 +423,7 @@ export default function Assessment() {
               <Col span={8}>
                 <Card className="stat-card">
                   <Statistic title="测评状态" value={detail.status === 'completed' ? '已完成' : '进行中'} />
-                  {detail.completeTime && <div style={{ color: '#8a8f99', fontSize: 12, marginTop: 4 }}>{new Date(detail.completeTime).toLocaleString('zh-CN')}</div>}
+                  {detail.completeTime && <div style={{ color: '#8E8E93', fontSize: 12, marginTop: 4 }}>{new Date(detail.completeTime).toLocaleString('zh-CN')}</div>}
                 </Card>
               </Col>
             </Row>
@@ -388,16 +498,10 @@ export default function Assessment() {
                         if (!shadowing) return null;
                         const soe = shadowing.soeResult;
                         const audioUrl = (shadowing.audioFileID && audioUrls[shadowing.audioFileID]) || '';
-                        const scoreColor = (v) => {
-                          const n = Number(v) || 0;
-                          if (n >= 80) return '#52c41a';
-                          if (n >= 60) return '#faad14';
-                          return '#ff4d4f';
-                        };
                         return (
-                          <div style={{ marginBottom: 24, padding: 16, background: '#f0f9ff', borderRadius: 8 }}>
-                            <div style={{ fontWeight: 600, marginBottom: 8, color: '#1890ff' }}>🎯 跟读评测</div>
-                            <p style={{ color: '#595959', marginBottom: 8 }}>{shadowing.question}</p>
+                          <div className="soe-panel">
+                            <div className="soe-panel-title"><AimOutlined />跟读评测</div>
+                            <p style={{ color: '#6E6E73', marginBottom: 8 }}>{shadowing.question}</p>
                             {audioUrl && (
                               <div style={{ marginBottom: 8 }}>
                                 <audio controls src={audioUrl} style={{ width: '100%', maxWidth: 400 }} />
@@ -406,7 +510,7 @@ export default function Assessment() {
                             {shadowing.duration != null && <Tag style={{ marginBottom: 8 }}>时长 {shadowing.duration}s</Tag>}
                             {soe ? (
                               <div style={{ marginTop: 12 }}>
-                                <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>SOE 发音评分：</div>
+                                <div style={{ fontSize: 13, color: '#6E6E73', marginBottom: 8 }}>SOE 发音评分：</div>
                                 <Row gutter={16}>
                                   <Col span={8}>
                                     <Card size="small">
@@ -414,7 +518,7 @@ export default function Assessment() {
                                         title="准确度"
                                         value={Math.round(soe.pronAccuracy)}
                                         suffix="/100"
-                                        valueStyle={{ color: scoreColor(soe.pronAccuracy) }}
+                                        valueStyle={{ color: getSoeScoreColor(soe.pronAccuracy) }}
                                       />
                                     </Card>
                                   </Col>
@@ -424,7 +528,7 @@ export default function Assessment() {
                                         title="流利度"
                                         value={Math.round(soe.pronFluency)}
                                         suffix="/100"
-                                        valueStyle={{ color: scoreColor(soe.pronFluency) }}
+                                        valueStyle={{ color: getSoeScoreColor(soe.pronFluency) }}
                                       />
                                     </Card>
                                   </Col>
@@ -434,14 +538,14 @@ export default function Assessment() {
                                         title="完整度"
                                         value={Math.round(soe.pronCompletion)}
                                         suffix="/100"
-                                        valueStyle={{ color: scoreColor(soe.pronCompletion) }}
+                                        valueStyle={{ color: getSoeScoreColor(soe.pronCompletion) }}
                                       />
                                     </Card>
                                   </Col>
                                 </Row>
                               </div>
                             ) : (
-                              <p style={{ color: '#faad14', fontSize: 12, marginTop: 8 }}>
+                              <p style={{ color: '#FF9500', fontSize: 12, marginTop: 8 }}>
                                 发音评分未生成（可能未配置腾讯云 SOE 服务）
                               </p>
                             )}
@@ -462,26 +566,26 @@ export default function Assessment() {
                                 title={`第 ${idx + 1} 题`}
                                 description={
                                   <div>
-                                    <p style={{ color: '#666', marginBottom: 8 }}>{item.question}</p>
+                                    <p style={{ color: '#6E6E73', marginBottom: 8 }}>{item.question}</p>
                                     {audioUrl ? (
                                       <div style={{ marginBottom: 8 }}>
                                         <audio controls src={audioUrl} style={{ width: '100%', maxWidth: 400 }} />
                                       </div>
                                     ) : item.audioFileID ? (
-                                      <p style={{ color: '#c0c4cc', fontSize: 12 }}>音频链接解析中或已失效</p>
+                                      <p style={{ color: '#8E8E93', fontSize: 12 }}>音频链接解析中或已失效</p>
                                     ) : null}
                                     {item.duration != null && <Tag style={{ marginBottom: 8 }}>时长 {item.duration}s</Tag>}
                                     {item.transcribedText ? (
                                       <div style={{ marginTop: 4 }}>
                                         <b>转写文本：</b>
-                                        <span style={{ color: '#595959' }}>{item.transcribedText}</span>
+                                        <span style={{ color: '#6E6E73' }}>{item.transcribedText}</span>
                                       </div>
                                     ) : asrFailed ? (
-                                      <p style={{ color: '#ff4d4f', fontSize: 12 }}>
+                                      <p style={{ color: '#FF3B30', fontSize: 12 }}>
                                         转写失败{item.asrError ? `：${item.asrError}` : ''}
                                       </p>
                                     ) : (
-                                      <span style={{ color: '#c0c4cc', fontSize: 12 }}>暂无转写文本（ASR 处理中或未配置）</span>
+                                      <span style={{ color: '#8E8E93', fontSize: 12 }}>暂无转写文本（ASR 处理中或未配置）</span>
                                     )}
                                   </div>
                                 }
@@ -500,8 +604,16 @@ export default function Assessment() {
 
             {/* ============ AI 智能分析报告 ============ */}
             <Divider orientation="left" style={{ marginTop: 32 }}>
-              <span style={{ fontSize: 16, fontWeight: 600 }}>✨ AI 智能分析报告</span>
+              <span style={{ fontSize: 16, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <ThunderboltOutlined style={{ color: '#12B7A8' }} />
+                AI 智能分析报告
+              </span>
               {aiReport?.model && <Tag style={{ marginLeft: 8 }}>模型：{aiReport.model}</Tag>}
+              {aiReport?.generatedAt && (
+                <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                  报告生成于 {new Date(aiReport.generatedAt).toLocaleString('zh-CN')}，已保存可直接查看
+                </Text>
+              )}
             </Divider>
 
             {aiLoading ? (
@@ -517,7 +629,7 @@ export default function Assessment() {
                     <Row gutter={16} style={{ marginBottom: 16 }}>
                       <Col span={8}>
                         <Card size="small">
-                          <Statistic title="词汇量" value={aiReport.part1.vocab.estimate} suffix="词" valueStyle={{ color: '#12b7a8' }} />
+                          <Statistic title="词汇量" value={aiReport.part1.vocab.estimate} suffix="词" valueStyle={{ color: '#0E8C81' }} />
                         </Card>
                       </Col>
                       <Col span={8}>
@@ -527,7 +639,7 @@ export default function Assessment() {
                       </Col>
                       <Col span={8}>
                         <Card size="small">
-                          <Statistic title="综合 CEFR" value={aiReport.part1.cefrLevel || '-'} valueStyle={{ color: '#1677ff' }} />
+                          <Statistic title="综合 CEFR" value={aiReport.part1.cefrLevel || '-'} valueStyle={{ color: '#0E8C81' }} />
                         </Card>
                       </Col>
                     </Row>
@@ -543,7 +655,7 @@ export default function Assessment() {
                         title: '分数 (0-5)',
                         dataIndex: 'score',
                         width: 120,
-                        render: (v) => <Text strong style={{ color: v >= 3 ? '#ff4d4f' : v >= 2 ? '#faad14' : '#52c41a' }}>{v.toFixed(1)}</Text>,
+                        render: (v) => <Text strong style={{ color: v >= 3 ? '#FF3B30' : v >= 2 ? '#FF9500' : '#34C759' }}>{v.toFixed(1)}</Text>,
                       },
                       {
                         title: '平均问题指数 (0-100)',
@@ -551,8 +663,8 @@ export default function Assessment() {
                         width: 160,
                         render: (v) => (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ flex: 1, height: 8, background: '#f0f0f0', borderRadius: 4, overflow: 'hidden' }}>
-                              <div style={{ width: `${v}%`, height: '100%', background: v >= 60 ? '#ff4d4f' : v >= 40 ? '#faad14' : '#52c41a', borderRadius: 4 }} />
+                            <div style={{ flex: 1, height: 8, background: '#F2F2F7', borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ width: `${v}%`, height: '100%', background: v >= 60 ? '#FF3B30' : v >= 40 ? '#FF9500' : '#34C759', borderRadius: 999 }} />
                             </div>
                             <Text style={{ minWidth: 32 }}>{v}</Text>
                           </div>
@@ -565,7 +677,7 @@ export default function Assessment() {
                           arr && arr.length ? (
                             <ul style={{ margin: 0, paddingLeft: 18 }}>
                               {arr.map((p, i) => (
-                                <li key={i} style={{ fontSize: 13, lineHeight: 1.8, color: '#595959' }}>{p}</li>
+                                <li key={i} style={{ fontSize: 13, lineHeight: 1.8, color: '#6E6E73' }}>{p}</li>
                               ))}
                             </ul>
                           ) : (
@@ -580,47 +692,34 @@ export default function Assessment() {
                 <div>
                   <div className="chart-title" style={{ marginBottom: 12 }}>第二部分：测评结果分析</div>
                   {aiReport.part2?.raw ? (
-                    <Paragraph style={{ whiteSpace: 'pre-wrap', color: '#595959' }}>{aiReport.part2.raw}</Paragraph>
+                    <Paragraph style={{ whiteSpace: 'pre-wrap', color: '#6E6E73' }}>{aiReport.part2.raw}</Paragraph>
                   ) : (
                     <div>
                       {aiReport.part2?.summary && (
-                        <div style={{ marginBottom: 16, padding: '12px 16px', background: '#f6ffed', borderRadius: 8, borderLeft: '3px solid #52c41a' }}>
-                          <Text strong style={{ color: '#389e0d' }}>▎整体概述</Text>
-                          <Paragraph style={{ margin: '8px 0 0', color: '#595959', lineHeight: 1.8 }}>{aiReport.part2.summary}</Paragraph>
+                        <div className="insight-block">
+                          <div className="insight-block-title">整体概述</div>
+                          <Paragraph className="insight-block-text">{aiReport.part2.summary}</Paragraph>
                         </div>
                       )}
                       {aiReport.part2?.characteristics && (
-                        <div style={{ marginBottom: 16 }}>
-                          <Text strong>▎核心特点</Text>
-                          <Paragraph style={{ margin: '8px 0 0', color: '#595959', lineHeight: 1.8 }}>{aiReport.part2.characteristics}</Paragraph>
+                        <div className="insight-block">
+                          <div className="insight-block-title">核心特点</div>
+                          <Paragraph className="insight-block-text">{aiReport.part2.characteristics}</Paragraph>
                         </div>
                       )}
                       {aiReport.part2?.improvementPath && (
-                        <div style={{ marginBottom: 16 }}>
-                          <Text strong>▎核心提分路径</Text>
-                          <Paragraph style={{ margin: '8px 0 0', color: '#1677ff', lineHeight: 1.8, fontWeight: 500 }}>{aiReport.part2.improvementPath}</Paragraph>
+                        <div className="insight-block insight-block--soft">
+                          <div className="insight-block-title">核心提分路径</div>
+                          <Paragraph className="insight-block-text" style={{ color: '#0E8C81', fontWeight: 500 }}>
+                            {aiReport.part2.improvementPath}
+                          </Paragraph>
                         </div>
                       )}
-                      {aiReport.part2?.learningPath && aiReport.part2.learningPath.length > 0 && (
-                        <div style={{ marginBottom: 16 }}>
-                          <Text strong>▎整体学习路径建议</Text>
-                          <div style={{ marginTop: 8 }}>
-                            {aiReport.part2.learningPath.map((item, idx) => (
-                              <div key={idx} style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: '#12b7a8', color: '#fff', fontSize: 12, flexShrink: 0 }}>{idx + 1}</span>
-                                <div>
-                                  <Text strong>{item.title}</Text>
-                                  <div style={{ color: '#8c8c8c', fontSize: 13, lineHeight: 1.6 }}>{item.desc}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      {renderCoursePlan()}
                       {aiReport.part2?.trainingLogic && (
-                        <div style={{ padding: '12px 16px', background: '#f0f5ff', borderRadius: 8 }}>
-                          <Text strong style={{ color: '#1677ff' }}>▎整体训练逻辑</Text>
-                          <Paragraph style={{ margin: '8px 0 0', color: '#595959', lineHeight: 1.8 }}>{aiReport.part2.trainingLogic}</Paragraph>
+                        <div className="insight-block insight-block--soft">
+                          <div className="insight-block-title">整体训练逻辑</div>
+                          <Paragraph className="insight-block-text">{aiReport.part2.trainingLogic}</Paragraph>
                         </div>
                       )}
                     </div>
@@ -631,7 +730,9 @@ export default function Assessment() {
               <Empty
                 description={
                   <span>
-                    点击上方 <Text strong style={{ color: '#12b7a8' }}>「AI 智能分析」</Text> 按钮，为该学生生成智能测评报告
+                    点击上方 <Text strong style={{ color: '#12b7a8' }}>「AI 智能分析」</Text> 按钮生成智能测评报告
+                    <br />
+                    <Text type="secondary" style={{ fontSize: 12 }}>报告生成后会自动保存，再次打开无需重新生成；测评数据更新后可点「重新生成」</Text>
                   </span>
                 }
                 style={{ padding: '40px 0' }}

@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { Layout, Menu, Dropdown, Space, Avatar, message } from 'antd';
+import { Layout, Menu, Dropdown, Avatar, message } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   CalendarOutlined,
   TeamOutlined,
   FundOutlined,
+  CheckCircleOutlined,
   UserOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
@@ -16,6 +17,7 @@ const menuItems = [
   { key: '/schedule', icon: <CalendarOutlined />, label: '排课管理' },
   { key: '/students', icon: <TeamOutlined />, label: '学生分析' },
   { key: '/assessment', icon: <FundOutlined />, label: '测评报告' },
+  { key: '/checkin', icon: <CheckCircleOutlined />, label: '打卡管理' },
 ];
 
 export default function AdminLayout() {
@@ -48,23 +50,15 @@ export default function AdminLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" width={208} breakpoint="lg" collapsedWidth={0}>
-        <div
-          style={{
-            height: 56,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 16,
-            letterSpacing: 1,
-          }}
-        >
-          IELTS 教学后台
+      <Sider width={216} breakpoint="lg" collapsedWidth={0} className="admin-sider">
+        <div className="admin-logo">
+          <span className="admin-logo-mark">
+            <img src="/logo.jpg" alt="Deer Edu" />
+          </span>
+          <span className="admin-logo-text">Deer Edu</span>
         </div>
         <Menu
-          theme="dark"
+          className="admin-menu"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
@@ -72,24 +66,15 @@ export default function AdminLayout() {
         />
       </Sider>
       <Layout>
-        <Header
-          style={{
-            background: '#fff',
-            padding: '0 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          }}
-        >
+        <Header className="admin-header">
           <Dropdown menu={userMenu} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar size="small" icon={<UserOutlined />} style={{ background: '#12b7a8' }} />
+            <div className="admin-user">
+              <Avatar size={28} icon={<UserOutlined />} style={{ background: '#12B7A8', flexShrink: 0 }} />
               <span>{admin?.nickName || '管理员'}</span>
-            </Space>
+            </div>
           </Dropdown>
         </Header>
-        <Content style={{ margin: 16 }}>
+        <Content className="admin-content">
           <Outlet />
         </Content>
       </Layout>

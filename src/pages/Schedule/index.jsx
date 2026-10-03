@@ -7,7 +7,6 @@ import {
   DatePicker,
   Select,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -15,19 +14,35 @@ import {
   Switch,
   Checkbox,
   Popconfirm,
+  Calendar,
+  Tooltip,
   message,
 } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  ReloadOutlined,
+  CustomerServiceOutlined,
+  BookOutlined,
+  EditOutlined,
+  AudioOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getCourses, saveCourse, deleteCourse, getAllUsers } from '../../api';
 
 const SUBJECTS = ['听力', '阅读', '写作', '口语'];
-const SUBJECT_COLORS = {
-  听力: '#A7FBF5',
-  阅读: '#FFD4B8',
-  写作: '#FFE8F0',
-  口语: '#E8D4F8',
+
+// 科目图标：与小程序 schedule-manage 页一致（headphones / book / pen / mic）
+const SUBJECT_ICONS = {
+  听力: <CustomerServiceOutlined />,
+  阅读: <BookOutlined />,
+  写作: <EditOutlined />,
+  口语: <AudioOutlined />,
 };
+// 月历 chip 的科目样式类名
+const SUBJECT_CHIP_CLASS = { 听力: 'listening', 阅读: 'reading', 写作: 'writing', 口语: 'speaking' };
+// 每个日期格子最多直接展示的课程条数，超出折叠为「+N 更多」
+const MAX_CELL_CHIPS = 3;
 const WEEKDAYS = [
   { label: '周一', value: 1 },
   { label: '周二', value: 2 },
@@ -62,8 +77,12 @@ export default function Schedule() {
       start = selectedDate.subtract(selectedDate.day(), 'day');
       end = start.add(6, 'day');
     } else {
-      start = selectedDate.startOf('month');
-      end = selectedDate.endOf('month');
+      // 月视图按日历网格取数：周一为一周起始，覆盖整屏 6 行 × 7 天，
+      // 使网格边缘带出的相邻月份日期也能显示课程
+      const first = selectedDate.startOf('month');
+      const offset = (first.day() + 6) % 7;
+      start = first.subtract(offset, 'day');
+      end = start.add(41, 'day');
     }
     return { start: start.format('YYYY-MM-DD'), end: end.format('YYYY-MM-DD') };
   }, [viewMode, selectedDate]);
@@ -82,7 +101,7 @@ export default function Schedule() {
   const loadCourses = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getCourses({ ...dateRange, limit: 500 });
+      const res = await getCourses({ startDate: dateRange.start, endDate: dateRange.end, limit: 500 });
       if (res.success) {
         setList(res.data || []);
       } else {
@@ -108,6 +127,17 @@ export default function Schedule() {
     return list.filter((c) => c.studentId === studentId);
   }, [list, studentId]);
 
+  // 月视图：按日期 YYYY-MM-DD 分组（列表已按日期/开始时间排序，分组内顺序保持不变）
+  const coursesByDate = useMemo(() => {
+    const map = {};
+    filteredList.forEach((c) => {
+      const key = (c.date || '').substring(0, 10);
+      if (!key) return;
+      (map[key] ||= []).push(c);
+    });
+    return map;
+  }, [filteredList]);
+
   const columns = [
     {
       title: '日期',
@@ -123,9 +153,12 @@ export default function Schedule() {
     {
       title: '科目',
       dataIndex: 'subject',
-      width: 80,
+      width: 96,
       render: (v) => (
-        <Tag style={{ background: SUBJECT_COLORS[v] || '#eee', border: 'none' }}>{v}</Tag>
+        <span className="subject-chip">
+          {SUBJECT_ICONS[v] || null}
+          {v}
+        </span>
       ),
     },
     { title: '课程名称', dataIndex: 'title', ellipsis: true },
@@ -150,13 +183,14 @@ export default function Schedule() {
     },
   ];
 
-  const openAdd = () => {
+  // presetDate：月历空白格快捷新增时预填日期（YYYY-MM-DD），默认今天
+  const openAdd = (presetDate) => {
     setEditing(null);
     setRecurring(false);
     form.resetFields();
     form.setFieldsValue({
       subject: '听力',
-      date: dayjs(),
+      date: presetDate ? dayjs(presetDate) : dayjs(),
       startTime: dayjs('09:00', 'HH:mm'),
       endTime: dayjs('10:00', 'HH:mm'),
     });
@@ -242,6 +276,73 @@ export default function Schedule() {
     return selectedDate.format('YYYY年M月');
   }, [viewMode, selectedDate, dateRange]);
 
+  // 月历单个日期格：chip 点击编辑、空白点击新增、悬浮删除
+  const renderMonthCell = (date) => {
+    const dateStr = date.format('YYYY-MM-DD');
+    const courses = coursesByDate[dateStr] || [];
+    const inMonth = date.month() === selectedDate.month();
+    const visible = courses.slice(0, MAX_CELL_CHIPS);
+    const hiddenCount = courses.length - visible.length;
+
+    return (
+      <div
+        className={`cal-cell-body${inMonth ? '' : ' cal-cell-body--muted'}`}
+        onClick={() => openAdd(dateStr)}
+      >
+        {visible.map((c) => (
+          <Tooltip
+            key={c._id}
+            placement="rightTop"
+            title={
+              <div className="cal-tip">
+                <div>{`${c.startTime || ''} - ${c.endTime || ''} ${c.subject || ''} · ${c.title || ''}`}</div>
+                {c.studentName && <div>学生：{c.studentName}</div>}
+                {c.teacher && <div>老师：{c.teacher}</div>}
+                {c.location && <div>地点：{c.location}</div>}
+                {c.description && <div>备注：{c.description}</div>}
+              </div>
+            }
+          >
+            <div
+              className={`cal-chip cal-chip--${SUBJECT_CHIP_CLASS[c.subject] || 'other'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openEdit(c);
+              }}
+            >
+              <span className="cal-chip-time">{c.startTime}</span>
+              <span className="cal-chip-subject">{c.subject}</span>
+              <span className="cal-chip-title">{c.title}</span>
+              <Popconfirm
+                title="确认删除这节课？"
+                onConfirm={() => handleDelete(c)}
+              >
+                <span
+                  className="cal-chip-del"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DeleteOutlined />
+                </span>
+              </Popconfirm>
+            </div>
+          </Tooltip>
+        ))}
+        {hiddenCount > 0 && (
+          <div
+            className="cal-cell-more"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedDate(date);
+              setViewMode('day');
+            }}
+          >
+            +{hiddenCount} 更多
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -282,7 +383,7 @@ export default function Schedule() {
             </Button>
           </Space>
           <Space>
-            <span style={{ color: '#8a8f99' }}>{rangeText}（共 {filteredList.length} 节）</span>
+            <span className="range-meta">{rangeText}（共 {filteredList.length} 节）</span>
             <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
               新增排课
             </Button>
@@ -290,13 +391,29 @@ export default function Schedule() {
         </Space>
       </Card>
 
-      <Table
-        rowKey="_id"
-        loading={loading}
-        columns={columns}
-        dataSource={filteredList}
-        pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 节` }}
-      />
+      {viewMode === 'month' ? (
+        <Card className="sched-calendar-card">
+          <Calendar
+            className="sched-calendar"
+            fullscreen
+            mode="month"
+            value={selectedDate}
+            headerRender={() => null}
+            onSelect={(d) => setSelectedDate(d)}
+            cellRender={(date, info) =>
+              info.type === 'date' ? renderMonthCell(date) : null
+            }
+          />
+        </Card>
+      ) : (
+        <Table
+          rowKey="_id"
+          loading={loading}
+          columns={columns}
+          dataSource={filteredList}
+          pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 节` }}
+        />
+      )}
 
       <Modal
         title={editing ? '编辑课程' : '新增排课'}

@@ -40,6 +40,14 @@ export const adminAssessment = (data) => callFunction('adminAssessment', data);
 /** AI 智能测评报告：能力图谱 + 大模型分析 */
 export const aiGenerateReport = (data) => callFunction('aiGenerateReport', data);
 
+// ---------- 打卡 ----------
+
+/** 发布/保存每日打卡任务（管理员） */
+export const saveDailyTask = (data) => callFunction('saveDailyTask', data);
+
+/** 获取每日打卡任务（按日期 / 历史列表） */
+export const getDailyTasks = (data) => callFunction('getDailyTasks', data);
+
 export default {
   adminLogin,
   adminVerify,
@@ -50,4 +58,6 @@ export default {
   adminStats,
   adminAssessment,
   aiGenerateReport,
+  saveDailyTask,
+  getDailyTasks,
 };

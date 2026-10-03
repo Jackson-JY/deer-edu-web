@@ -1,3 +1,24 @@
+/* ============================================================
+ * 全局样式 · 对齐小程序设计系统（app.wxss）
+ * Apple 设计语言 + 品牌薄荷绿 #12B7A8
+ * 规则：主题主干走 ConfigProvider Token，本文件只补 Token 覆盖不到的细节
+ * ============================================================ */
+
+:root {
+  --brand: #12b7a8;
+  --brand-dark: #0e8c81;
+  --brand-tint: rgba(18, 183, 168, 0.12);
+  --ink: #1d1d1f;
+  --ink-2: #6e6e73;
+  --ink-3: #8e8e93;
+  --bg: #f5f5f7;
+  --fill: #f2f2f7;
+  --line: #e5e5ea;
+  --line-soft: #efeff2;
+  --danger: #ff3b30;
+  --card-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -11,78 +32,648 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background: #f5f6f8;
-  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI',
+    Roboto, 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial,
+    sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 页面通用容器 */
+/* ==================== 页面骨架 ==================== */
+
 .page-container {
-  padding: 20px;
+  padding: 24px 28px 32px;
 }
 
 .page-header {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .page-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f2329;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   margin: 0 0 4px;
 }
 
 .page-desc {
-  color: #8a8f99;
+  color: var(--ink-3);
   font-size: 13px;
+  margin: 0;
+}
+
+/* ==================== 卡片：细边框 + 极克制阴影 ==================== */
+
+.ant-card {
+  border-color: var(--line);
+  box-shadow: var(--card-shadow);
+}
+
+.ant-card .ant-card-head {
+  border-bottom-color: var(--line-soft);
+  min-height: 52px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ant-card .ant-card-head-title {
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* 统计卡片 */
 .stat-card {
-  border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border-radius: 14px;
 }
 
 .stat-card .ant-statistic-title {
-  color: #8a8f99;
+  color: var(--ink-3);
   font-size: 13px;
 }
 
 .stat-card .ant-statistic-content {
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* 统计卡图标：中性灰圆角方块 + 薄荷图标（呼应小程序 schedule-icon-wrapper） */
+.stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 10px;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--brand);
+  font-size: 17px;
+  vertical-align: middle;
 }
 
 /* 图表容器 */
 .chart-box {
   background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--card-shadow);
 }
 
 .chart-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #1f2329;
-  margin: 0 0 12px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
 }
 
-/* 登录页 */
-.login-wrapper {
-  height: 100%;
+.chart-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 13px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: var(--brand);
+  vertical-align: -1px;
+}
+
+/* ==================== 按钮：胶囊、无投影、按压亮度反馈 ==================== */
+
+.ant-btn {
+  font-weight: 500;
+}
+
+.ant-btn-primary:not(:disabled):not(.ant-btn-disabled) {
+  background: var(--brand);
+}
+
+.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover {
+  background: var(--brand-dark);
+}
+
+.ant-btn:active {
+  filter: brightness(0.94);
+}
+
+.ant-btn-link {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+/* ==================== 表格 ==================== */
+
+.ant-table {
+  background: transparent;
+}
+
+.ant-table .ant-table-container {
+  border-radius: 14px;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  border-bottom-color: var(--line-soft);
+}
+
+.ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+/* ==================== 科目标签：中性灰胶囊 + 薄荷图标 ==================== */
+
+.subject-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+}
+
+.subject-chip .anticon {
+  color: var(--brand);
+  font-size: 13px;
+}
+
+/* 信息备注小字 */
+.range-meta {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+/* ==================== 侧边栏 ==================== */
+
+.admin-sider {
+  background: #fff;
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.admin-logo {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+
+.admin-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #a7fbf5 0%, #12b7a8 100%);
+  flex-shrink: 0;
+}
+
+.admin-logo-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.admin-logo-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.admin-menu {
+  border-inline-end: none !important;
+  padding: 8px 12px;
+}
+
+.admin-menu .ant-menu-item {
+  margin-inline: 0;
+}
+
+/* ==================== 顶栏 ==================== */
+
+.admin-header {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 9;
+}
+
+.admin-user {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.admin-user:hover {
+  background: var(--fill);
+}
+
+.admin-content {
+  min-height: calc(100vh - 60px);
+}
+
+/* ==================== 登录页：银雾灰底 + 白色卡片 ==================== */
+
+.login-wrapper {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 24px;
 }
 
 .login-card {
-  width: 380px;
-  padding: 40px 32px;
+  width: 400px;
+  max-width: 100%;
+  padding: 36px 32px 28px;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
   text-align: center;
+}
+
+.login-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.login-hint {
+  display: block;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* ==================== 弹窗 / 抽屉 / 折叠面板 ==================== */
+
+.ant-modal .ant-modal-header {
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 4px;
+}
+
+.ant-divider-borderless::before,
+.ant-divider::before {
+  border-color: var(--line);
+}
+
+.ant-collapse {
+  border-color: var(--line);
+  border-radius: 12px !important;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ant-collapse > .ant-collapse-item {
+  border-color: var(--line-soft);
+}
+
+.ant-collapse > .ant-collapse-item > .ant-collapse-header {
+  align-items: center;
+  font-weight: 500;
+}
+
+.ant-collapse-content {
+  background: #fcfcfd;
+}
+
+/* 描述列表 */
+.ant-descriptions-bordered .ant-descriptions-view {
+  border-color: var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-label,
+.ant-descriptions-bordered .ant-descriptions-item-content {
+  border-color: var(--line-soft);
+}
+
+.ant-descriptions .ant-descriptions-item-label {
+  background: #fafafb;
+  color: var(--ink-2);
+}
+
+/* ==================== 测评报告：信息块（呼应小程序左竖线卡片） ==================== */
+
+.insight-block {
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: 12px;
+}
+
+.insight-block--soft {
+  border-left-color: var(--brand);
+  background: rgba(18, 183, 168, 0.05);
+}
+
+.insight-block-title {
+  font-weight: 600;
+  color: var(--brand-dark);
+  font-size: 14px;
+}
+
+.insight-block-text {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  line-height: 1.8;
+}
+
+.soe-panel {
+  margin-bottom: 24px;
+  padding: 18px;
+  background: var(--fill);
+  border-radius: 14px;
+}
+
+.soe-panel-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.soe-panel-title .anticon {
+  color: var(--brand);
+}
+
+.path-step {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.path-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.path-step-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.path-step-desc {
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 空态 */
+.ant-empty-description {
+  color: var(--ink-3);
+}
+
+/* ==================== 排课管理 · 月视图日历 ==================== */
+.sched-calendar-card .ant-card-body {
+  padding: 12px 16px 16px;
+}
+
+.sched-calendar .ant-picker-panel {
+  background: transparent;
+}
+
+.sched-calendar .ant-picker-body {
+  padding: 0;
+}
+
+.sched-calendar .ant-picker-content thead th {
+  height: 38px;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sched-calendar .ant-picker-cell {
+  padding: 0 0 8px;
+}
+
+.sched-calendar .ant-picker-calendar-date {
+  min-height: 118px;
+  margin: 0 4px;
+  padding: 6px 8px 8px;
+  border-top: none;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.sched-calendar .ant-picker-calendar-date:hover {
+  background: #fafefd;
+  box-shadow: inset 0 0 0 1px #bfe6e1;
+}
+
+.sched-calendar .ant-picker-cell-in-view .ant-picker-calendar-date-value {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.sched-calendar .ant-picker-calendar-date-today .ant-picker-calendar-date-value {
+  display: inline-block;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  line-height: 22px;
+  text-align: center;
+  background: var(--brand);
+  color: #fff;
+}
+
+.cal-cell-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 84px;
+  margin-top: 6px;
+  cursor: pointer;
+}
+
+.cal-cell-body--muted {
+  opacity: 0.35;
+}
+
+.cal-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 6px 0 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.cal-chip:hover {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.cal-chip-time {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-chip-subject {
+  flex: none;
+  opacity: 0.9;
+}
+
+.cal-chip-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-chip-del {
+  display: none;
+  flex: none;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.55;
+}
+
+.cal-chip:hover .cal-chip-del {
+  display: inline-flex;
+}
+
+.cal-chip-del:hover {
+  background: rgba(255, 59, 48, 0.12);
+  color: var(--danger);
+  opacity: 1;
+}
+
+.cal-chip--listening {
+  background: #e7f1fe;
+  color: #1559b8;
+}
+
+.cal-chip--reading {
+  background: #e8f6ee;
+  color: #1e7a45;
+}
+
+.cal-chip--writing {
+  background: #fff2e3;
+  color: #b25100;
+}
+
+.cal-chip--speaking {
+  background: #fde9f0;
+  color: #b02352;
+}
+
+.cal-chip--other {
+  background: var(--fill);
+  color: var(--ink-2);
+}
+
+.cal-cell-more {
+  padding-left: 8px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--brand-dark);
+  cursor: pointer;
+}
+
+.cal-cell-more:hover {
+  color: var(--brand);
+}
+
+.cal-tip div {
+  line-height: 1.9;
+}
+
+/* 滚动条（WebKit） */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.14);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
