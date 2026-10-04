@@ -83,7 +83,7 @@ export default function AdminLayout() {
       </Sider>
       <Layout>
         <Header className="admin-header">
-          <Dropdown menu={userMenu} placement="bottomRight">
+          <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
             <div className="admin-user">
               <Avatar size={28} icon={<UserOutlined />} style={{ background: '#12B7A8', flexShrink: 0 }} />
               <span>{admin?.nickName || '管理员'}</span>
