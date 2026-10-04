@@ -50,6 +50,11 @@ export const assessmentGrant = (data) => callFunction('assessmentGrant', data);
 /** 统计看板：概览 / 14天趋势 / 操作记录 / 访问记录 */
 export const adminDashboard = (data) => callFunction('adminDashboard', data);
 
+// ---------- 管理员管理 ----------
+
+/** 管理员账号管理：列表 / 新增 / 重置密码 / 自行改密 */
+export const adminManage = (data) => callFunction('adminManage', data);
+
 // ---------- 打卡 ----------
 
 /** 发布/保存每日打卡任务（管理员） */
@@ -70,6 +75,7 @@ export default {
   aiGenerateReport,
   assessmentGrant,
   adminDashboard,
+  adminManage,
   saveDailyTask,
   getDailyTasks,
 };

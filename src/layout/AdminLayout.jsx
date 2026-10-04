@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Layout, Menu, Dropdown, Avatar, message } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -10,8 +10,11 @@ import {
   LogoutOutlined,
   DashboardOutlined,
   SafetyOutlined,
+  UsergroupAddOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { getAdminInfo, clearAuth } from '../cloudbase';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const { Sider, Header, Content } = Layout;
 
@@ -22,12 +25,14 @@ const menuItems = [
   { key: '/assessment', icon: <FundOutlined />, label: '测评报告' },
   { key: '/grants', icon: <SafetyOutlined />, label: '测评授权' },
   { key: '/checkin', icon: <CheckCircleOutlined />, label: '打卡管理' },
+  { key: '/admins', icon: <UsergroupAddOutlined />, label: '管理员管理' },
 ];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const admin = getAdminInfo();
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   const selectedKey = useMemo(() => {
     const path = location.pathname;
@@ -43,6 +48,13 @@ export default function AdminLayout() {
 
   const userMenu = {
     items: [
+      {
+        key: 'password',
+        icon: <LockOutlined />,
+        label: '修改密码',
+        onClick: () => setPwdOpen(true),
+      },
+      { type: 'divider' },
       {
         key: 'logout',
         icon: <LogoutOutlined />,
@@ -82,6 +94,7 @@ export default function AdminLayout() {
           <Outlet />
         </Content>
       </Layout>
+      <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
     </Layout>
   );
 }
