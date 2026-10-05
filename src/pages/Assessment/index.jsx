@@ -622,6 +622,36 @@ export default function Assessment() {
               </div>
             ) : aiReport ? (
               <div>
+                {/* 报告过期提示：缓存存在但源数据已更新 */}
+                {aiReport.stale && (
+                  <div
+                    style={{
+                      background: 'rgba(255, 159, 10, 0.08)',
+                      border: '1px solid #FFD79A',
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                      marginBottom: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Text style={{ color: '#B26A00', fontSize: 13 }}>
+                      测评数据已更新，以下报告可能过期，可点击右侧「重新生成」获取最新分析
+                    </Text>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<ThunderboltOutlined />}
+                      loading={aiLoading}
+                      onClick={() => handleGenerateReport(true)}
+                    >
+                      重新生成
+                    </Button>
+                  </div>
+                )}
                 {/* Part 1：能力图谱表格 */}
                 <div style={{ marginBottom: 24 }}>
                   <div className="chart-title" style={{ marginBottom: 12 }}>第一部分：能力图谱</div>
