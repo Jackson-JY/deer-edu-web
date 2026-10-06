@@ -4,6 +4,7 @@ import {
   Button,
   DatePicker,
   Select,
+  AutoComplete,
   Form,
   Input,
   InputNumber,
@@ -26,19 +27,30 @@ import { getDailyTasks, saveDailyTask, adminStats } from '../../api';
 
 const { RangePicker } = DatePicker;
 
+// 预设科目快捷选项（也可自定义输入任意 ≤4 字的标签，如「单词」「泛读」）
 const SUBJECT_OPTIONS = [
-  { label: '听力', value: 'listening' },
-  { label: '阅读', value: 'reading' },
-  { label: '写作', value: 'writing' },
-  { label: '口语', value: 'speaking' },
+  { label: '听力', value: '听力' },
+  { label: '阅读', value: '阅读' },
+  { label: '写作', value: '写作' },
+  { label: '口语', value: '口语' },
 ];
 
-const SUBJECT_LABEL = {
+// 预设科目颜色（自定义标签统一用灰色兜底）
+const SUBJECT_COLOR = {
+  听力: '#5AC8FA',
+  口语: '#FF9500',
+  阅读: '#34C759',
+  写作: '#AF52DE',
+};
+
+// 历史数据兼容：英文 key → 中文标签
+const LEGACY_SUBJECT_MAP = {
   listening: '听力',
   reading: '阅读',
   writing: '写作',
   speaking: '口语',
 };
+const normalizeSubject = (s) => LEGACY_SUBJECT_MAP[s] || s || '听力';
 
 /** 获取周一的日期 */
 function getMonday(d) {
@@ -75,7 +87,7 @@ export default function Checkin() {
         if (res.success && res.task) {
           const items = (res.task.items || []).map((it) => ({
             id: it.id,
-            subject: it.subject,
+            subject: normalizeSubject(it.subject),
             content: it.content,
             suggestMinutes: it.suggestMinutes,
           }));
@@ -154,7 +166,7 @@ export default function Checkin() {
         date: fmtDate(selectedDate),
         items: items.map((it, i) => ({
           id: it.id || `t${i + 1}`,
-          subject: it.subject || 'listening',
+          subject: (it.subject || '听力').trim().slice(0, 4),
           content: it.content.trim(),
           suggestMinutes: it.suggestMinutes || 30,
         })),
@@ -181,7 +193,7 @@ export default function Checkin() {
       if (res.success && res.task) {
         const items = (res.task.items || []).map((it) => ({
           id: `t${Date.now()}_${Math.random()}`,
-          subject: it.subject,
+          subject: normalizeSubject(it.subject),
           content: it.content,
           suggestMinutes: it.suggestMinutes,
         }));
@@ -203,7 +215,7 @@ export default function Checkin() {
       if (res.success && res.task) {
         const items = (res.task.items || []).map((it) => ({
           id: `t${Date.now()}_${Math.random()}`,
-          subject: it.subject,
+          subject: normalizeSubject(it.subject),
           content: it.content,
           suggestMinutes: it.suggestMinutes,
         }));
@@ -388,12 +400,19 @@ export default function Checkin() {
                       <Form.Item
                         {...restField}
                         name={[name, 'subject']}
-                        rules={[{ required: true, message: '请选择科目' }]}
-                        style={{ width: 100, flexShrink: 0 }}
+                        rules={[
+                          { required: true, message: '请填写科目' },
+                          { max: 4, message: '科目最多 4 个字' },
+                        ]}
+                        style={{ width: 110, flexShrink: 0 }}
                       >
-                        <Select
+                        <AutoComplete
                           placeholder="科目"
                           options={SUBJECT_OPTIONS}
+                          maxLength={4}
+                          filterOption={(input, option) =>
+                            (option?.value || '').includes(input)
+                          }
                         />
                       </Form.Item>
                       <Form.Item
@@ -432,7 +451,7 @@ export default function Checkin() {
                   {fields.length < 4 && (
                     <Button
                       type="dashed"
-                      onClick={() => add({ subject: 'listening', suggestMinutes: 30 })}
+                      onClick={() => add({ subject: '听力', suggestMinutes: 30 })}
                       icon={<PlusOutlined />}
                       style={{ width: 200 }}
                     >
