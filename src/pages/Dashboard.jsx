@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Statistic, Table, Select, Tag, Empty, Segmented, message } from 'antd';
+import { Card, Table, Select, Tag, Empty, Segmented, message } from 'antd';
 import {
   TeamOutlined,
   EyeOutlined,
@@ -10,17 +10,8 @@ import {
 } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import { adminDashboard } from '../api';
-
-// 图表通用样式（与测评报告页一致）
-const AXIS_LABEL = { color: '#8E8E93', fontSize: 11 };
-const SPLIT_LINE = { lineStyle: { color: '#EFEFF2' } };
-const TOOLTIP_CARD = {
-  backgroundColor: '#FFFFFF',
-  borderColor: '#E5E5EA',
-  borderWidth: 1,
-  textStyle: { color: '#1D1D1F', fontSize: 12 },
-  extraCssText: 'box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 10px;',
-};
+import { barTrendOption, GRANULARITY_OPTIONS, GRANULARITY_TITLE } from '../utils/charts';
+import StatCards from '../components/StatCards';
 
 const TREND_SERIES = [
   { key: 'visitors', name: '访问人数', color: '#0A84FF' },
@@ -28,45 +19,6 @@ const TREND_SERIES = [
   { key: 'assessments', name: '测评次数', color: '#FF9500' },
   { key: 'checkins', name: '打卡人数', color: '#AF52DE' },
 ];
-
-const GRANULARITY_OPTIONS = [
-  { label: '日', value: 'day' },
-  { label: '周', value: 'week' },
-  { label: '月', value: 'month' },
-];
-
-const GRANULARITY_TITLE = { day: '近 14 天', week: '近 12 周', month: '近 12 月' };
-
-/** 柱状图 x 轴标签：day/week 用 M/D，month 用 M月 */
-function axisLabelOf(label) {
-  if (/^\d{4}-\d{2}$/.test(label)) return `${parseInt(label.split('-')[1], 10)}月`;
-  const p = String(label).split('-');
-  return p.length >= 3 ? `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}` : label;
-}
-
-/** 趋势柱状图配置（日/周/月） */
-function trendOption(granularity, trend) {
-  return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...TOOLTIP_CARD },
-    legend: { bottom: 0, icon: 'circle', textStyle: { color: '#6E6E73', fontSize: 12 } },
-    grid: { left: 40, right: 20, top: 20, bottom: 56 },
-    xAxis: {
-      type: 'category',
-      data: (trend || []).map((t) => t.date),
-      axisLabel: { ...AXIS_LABEL, interval: 'auto', formatter: axisLabelOf },
-      axisLine: { lineStyle: { color: '#E5E5EA' } },
-      axisTick: { show: false },
-    },
-    yAxis: { type: 'value', minInterval: 1, axisLabel: AXIS_LABEL, splitLine: SPLIT_LINE },
-    series: TREND_SERIES.map((s) => ({
-      name: s.name,
-      type: 'bar',
-      barMaxWidth: 14,
-      data: (trend || []).map((t) => t[s.key] || 0),
-      itemStyle: { color: s.color, borderRadius: [3, 3, 0, 0] },
-    })),
-  };
-}
 
 const MODULE_OPTIONS = [
   { label: '全部模块', value: '' },
@@ -254,63 +206,16 @@ export default function Dashboard() {
       </div>
 
       {/* 指标卡 */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={12} sm={8} lg={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="总用户"
-              value={ov.usersTotal || 0}
-              prefix={<span className="stat-icon"><TeamOutlined /></span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="今日活跃"
-              value={ov.visitsToday || 0}
-              prefix={<span className="stat-icon"><EyeOutlined /></span>}
-              valueStyle={{ color: '#12B7A8' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="今日新增"
-              value={ov.usersNewToday || 0}
-              prefix={<span className="stat-icon"><UserAddOutlined /></span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="今日测评"
-              value={ov.assessmentsToday || 0}
-              prefix={<span className="stat-icon"><FundOutlined /></span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="今日打卡"
-              value={ov.checkinsToday || 0}
-              prefix={<span className="stat-icon"><CheckCircleOutlined /></span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card className="stat-card">
-            <Statistic
-              title="今日管理操作"
-              value={ov.auditToday || 0}
-              prefix={<span className="stat-icon"><ControlOutlined /></span>}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <StatCards
+        items={[
+          { title: '总用户', value: ov.usersTotal, icon: <TeamOutlined /> },
+          { title: '今日活跃', value: ov.visitsToday, icon: <EyeOutlined />, color: '#12B7A8' },
+          { title: '今日新增', value: ov.usersNewToday, icon: <UserAddOutlined /> },
+          { title: '今日测评', value: ov.assessmentsToday, icon: <FundOutlined /> },
+          { title: '今日打卡', value: ov.checkinsToday, icon: <CheckCircleOutlined /> },
+          { title: '今日管理操作', value: ov.auditToday, icon: <ControlOutlined /> },
+        ]}
+      />
 
       {/* 趋势（日/周/月 柱状图） */}
       <Card
@@ -328,7 +233,13 @@ export default function Dashboard() {
         style={{ marginBottom: 16 }}
       >
         {trend.length ? (
-          <ReactECharts option={trendOption(granularity, trend)} style={{ height: 320 }} />
+          <ReactECharts
+            option={barTrendOption({
+              dates: trend.map((t) => t.date),
+              series: TREND_SERIES.map((s) => ({ name: s.name, data: trend.map((t) => t[s.key] || 0), color: s.color })),
+            })}
+            style={{ height: 320 }}
+          />
         ) : (
           <Empty description="暂无趋势数据" style={{ padding: '40px 0' }} />
         )}

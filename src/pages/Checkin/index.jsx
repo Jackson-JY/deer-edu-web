@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getDailyTasks, saveDailyTask, adminStats, manageClasses } from '../../api';
+import { getMonday, fmtDate } from '../../utils/date';
 
 const { RangePicker } = DatePicker;
 
@@ -54,19 +55,6 @@ const LEGACY_SUBJECT_MAP = {
   speaking: '口语',
 };
 const normalizeSubject = (s) => LEGACY_SUBJECT_MAP[s] || s || '听力';
-
-/** 获取周一的日期 */
-function getMonday(d) {
-  const date = dayjs(d);
-  const day = date.day(); // 0=Sunday, 1=Monday...
-  const diff = day === 0 ? -6 : 1 - day;
-  return date.add(diff, 'day');
-}
-
-/** 格式化日期 YYYY-MM-DD */
-function fmtDate(d) {
-  return d.format('YYYY-MM-DD');
-}
 
 export default function Checkin() {
   const [form] = Form.useForm();

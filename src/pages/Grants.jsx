@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
-  Row,
-  Col,
   Button,
   Table,
   Tag,
@@ -13,7 +11,6 @@ import {
   DatePicker,
   Input,
   Space,
-  Statistic,
   Empty,
   Segmented,
   message,
@@ -27,21 +24,10 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { assessmentGrant } from '../api';
+import { parseExpireTs, startOfTodayTs } from '../utils/date';
+import StatCards from '../components/StatCards';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** 解析截止时间（可能是 'YYYY-MM-DD' 字符串、ISO 字符串或空），返回时间戳或 null */
-function parseExpireTs(v) {
-  if (v === null || v === undefined || v === '') return null;
-  const ts = new Date(v).getTime();
-  return Number.isNaN(ts) ? null : ts;
-}
-
-function startOfTodayTs() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
 
 /** 计算单个学生的授权状态 */
 function getGrantStatus(row) {
@@ -356,46 +342,15 @@ export default function Grants() {
       </div>
 
       {/* 统计卡 */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={12} md={6}>
-          <Card className="stat-card">
-            <Statistic
-              title="已授权总数"
-              value={stats.total}
-              prefix={<span className="stat-icon"><TeamOutlined /></span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card className="stat-card">
-            <Statistic
-              title="有效授权"
-              value={stats.active}
-              prefix={<span className="stat-icon"><SafetyOutlined /></span>}
-              valueStyle={{ color: '#12B7A8' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card className="stat-card">
-            <Statistic
-              title="剩余总次数"
-              value={stats.remainingTotal}
-              prefix={<span className="stat-icon"><ThunderboltOutlined /></span>}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card className="stat-card">
-            <Statistic
-              title="7天内到期"
-              value={stats.expiringSoon}
-              prefix={<span className="stat-icon"><ClockCircleOutlined /></span>}
-              valueStyle={{ color: stats.expiringSoon > 0 ? '#FF9500' : undefined }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <StatCards
+        colProps={{ xs: 12, md: 6 }}
+        items={[
+          { title: '已授权总数', value: stats.total, icon: <TeamOutlined /> },
+          { title: '有效授权', value: stats.active, icon: <SafetyOutlined />, color: '#12B7A8' },
+          { title: '剩余总次数', value: stats.remainingTotal, icon: <ThunderboltOutlined /> },
+          { title: '7天内到期', value: stats.expiringSoon, icon: <ClockCircleOutlined />, color: stats.expiringSoon > 0 ? '#FF9500' : undefined },
+        ]}
+      />
 
       {/* 学生授权表格 */}
       <Card

@@ -2,9 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Table,
-  Row,
-  Col,
-  Statistic,
   Button,
   Space,
   Avatar,
@@ -33,6 +30,8 @@ import {
 import ReactECharts from 'echarts-for-react';
 import { adminStats, manageClasses } from '../../api';
 import { getTempFileURL } from '../../cloudbase';
+import { barTrendOption, GRANULARITY_OPTIONS, GRANULARITY_TITLE } from '../../utils/charts';
+import StatCards from '../../components/StatCards';
 
 /**
  * 批量将学生列表中的 cloud:// 头像 fileID 转为 HTTPS 临时链接
@@ -52,52 +51,18 @@ async function resolveAvatars(students) {
   }));
 }
 
-// 图表配色：品牌薄荷 + Apple 系统色
-const AXIS_LABEL = { color: '#8E8E93', fontSize: 11 };
-const SPLIT_LINE = { lineStyle: { color: '#EFEFF2' } };
-const CHART_TOOLTIP = {
-  trigger: 'axis',
-  axisPointer: { type: 'shadow' },
-  backgroundColor: '#FFFFFF',
-  borderColor: '#E5E5EA',
-  borderWidth: 1,
-  textStyle: { color: '#1D1D1F', fontSize: 12 },
-  extraCssText: 'box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 10px;',
-};
-
-const GRANULARITY_OPTIONS = [
-  { label: '日', value: 'day' },
-  { label: '周', value: 'week' },
-  { label: '月', value: 'month' },
-];
-const GRANULARITY_TITLE = { day: '近 14 天', week: '近 12 周', month: '近 12 月' };
-
-function axisLabelOf(label) {
-  if (/^\d{4}-\d{2}$/.test(label)) return `${parseInt(label.split('-')[1], 10)}月`;
-  const p = String(label).split('-');
-  return p.length >= 3 ? `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}` : label;
-}
-
 /** 单生学习行为柱状图（日/周/月） */
-const trendChartOption = (data) => ({
-  color: ['#12B7A8', '#FF9500', '#AF52DE'],
-  tooltip: CHART_TOOLTIP,
-  legend: { data: ['打卡次数', '作业提交', '考试成绩'], bottom: 0, textStyle: { color: '#6E6E73' }, icon: 'circle' },
-  grid: { left: 36, right: 20, top: 24, bottom: 56 },
-  xAxis: {
-    type: 'category',
-    data: data.map((d) => d.date),
-    axisLabel: { ...AXIS_LABEL, interval: 'auto', formatter: axisLabelOf },
-    axisLine: { lineStyle: { color: '#E5E5EA' } },
-    axisTick: { show: false },
-  },
-  yAxis: { type: 'value', axisLabel: AXIS_LABEL, splitLine: SPLIT_LINE, minInterval: 1 },
-  series: [
-    { name: '打卡次数', type: 'bar', barMaxWidth: 14, data: data.map((d) => d.checkins), itemStyle: { color: '#12B7A8', borderRadius: [3, 3, 0, 0] } },
-    { name: '作业提交', type: 'bar', barMaxWidth: 14, data: data.map((d) => d.homework), itemStyle: { color: '#FF9500', borderRadius: [3, 3, 0, 0] } },
-    { name: '考试成绩', type: 'bar', barMaxWidth: 14, data: data.map((d) => d.exams), itemStyle: { color: '#AF52DE', borderRadius: [3, 3, 0, 0] } },
-  ],
-});
+const trendChartOption = (data) =>
+  barTrendOption({
+    dates: data.map((d) => d.date),
+    legend: { data: ['打卡次数', '作业提交', '考试成绩'], bottom: 0, textStyle: { color: '#6E6E73' }, icon: 'circle' },
+    grid: { left: 36, right: 20, top: 24, bottom: 56 },
+    series: [
+      { name: '打卡次数', data: data.map((d) => d.checkins), color: '#12B7A8' },
+      { name: '作业提交', data: data.map((d) => d.homework), color: '#FF9500' },
+      { name: '考试成绩', data: data.map((d) => d.exams), color: '#AF52DE' },
+    ],
+  });
 
 export default function Students() {
   const [overview, setOverview] = useState(null);
@@ -350,28 +315,15 @@ export default function Students() {
         <p className="page-desc">学员规模、班级层级、学习行为与活跃度概览</p>
       </div>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
-          <Card className="stat-card">
-            <Statistic title="学生总数" value={overview?.totalStudents || 0} prefix={<span className="stat-icon"><UserOutlined /></span>} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card className="stat-card">
-            <Statistic title="本周活跃" value={overview?.activeThisWeek || 0} prefix={<span className="stat-icon"><FireOutlined /></span>} valueStyle={{ color: '#0E8C81' }} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card className="stat-card">
-            <Statistic title="本月新增" value={overview?.newThisMonth || 0} prefix={<span className="stat-icon"><UserAddOutlined /></span>} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card className="stat-card">
-            <Statistic title="累计作业" value={overview?.totalHomework || 0} prefix={<span className="stat-icon"><FileTextOutlined /></span>} />
-          </Card>
-        </Col>
-      </Row>
+      <StatCards
+        colProps={{ span: 6 }}
+        items={[
+          { title: '学生总数', value: overview?.totalStudents, icon: <UserOutlined /> },
+          { title: '本周活跃', value: overview?.activeThisWeek, icon: <FireOutlined />, color: '#0E8C81' },
+          { title: '本月新增', value: overview?.newThisMonth, icon: <UserAddOutlined /> },
+          { title: '累计作业', value: overview?.totalHomework, icon: <FileTextOutlined /> },
+        ]}
+      />
 
       <Card style={{ marginBottom: 16 }} bodyStyle={{ padding: '12px 16px' }}>
         <Space wrap>

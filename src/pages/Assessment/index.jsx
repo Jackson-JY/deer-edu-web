@@ -5,6 +5,7 @@ import ReactECharts from 'echarts-for-react';
 import { adminAssessment, aiGenerateReport } from '../../api';
 import { getTempFileURL } from '../../cloudbase';
 import { ASSESSMENT_ITEMS, SCORE_LABELS } from '../../data/assessmentItems';
+import { AXIS_LABEL, SPLIT_LINE, TOOLTIP_CARD } from '../../utils/charts';
 
 const { Paragraph, Text } = Typography;
 
@@ -13,17 +14,6 @@ const SKILL_NAMES = { listening: '听力', reading: '阅读', writing: '写作',
 const CEFR_ORDER = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 // CEFR 色阶：中性灰起步，收敛到品牌薄荷绿
 const CEFR_COLOR = { A1: '#C7C7CC', A2: '#A9E4DD', B1: '#6FCFC3', B2: '#12B7A8', C1: '#0E8C81', C2: '#0A6B62' };
-
-// 图表通用样式
-const AXIS_LABEL = { color: '#8E8E93', fontSize: 11 };
-const SPLIT_LINE = { lineStyle: { color: '#EFEFF2' } };
-const TOOLTIP_CARD = {
-  backgroundColor: '#FFFFFF',
-  borderColor: '#E5E5EA',
-  borderWidth: 1,
-  textStyle: { color: '#1D1D1F', fontSize: 12 },
-  extraCssText: 'box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-radius: 10px;',
-};
 
 const radarOption = (levels) => ({
   tooltip: TOOLTIP_CARD,
