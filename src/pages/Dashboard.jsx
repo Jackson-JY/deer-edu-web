@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Statistic, Table, Select, Tag, Empty, message } from 'antd';
+import { Card, Row, Col, Statistic, Table, Select, Tag, Empty, Segmented, message } from 'antd';
 import {
   TeamOutlined,
   EyeOutlined,
@@ -29,36 +29,41 @@ const TREND_SERIES = [
   { key: 'checkins', name: '打卡人数', color: '#AF52DE' },
 ];
 
-/** 近14天趋势折线图配置 */
-function trendOption(days, trend) {
+const GRANULARITY_OPTIONS = [
+  { label: '日', value: 'day' },
+  { label: '周', value: 'week' },
+  { label: '月', value: 'month' },
+];
+
+const GRANULARITY_TITLE = { day: '近 14 天', week: '近 12 周', month: '近 12 月' };
+
+/** 柱状图 x 轴标签：day/week 用 M/D，month 用 M月 */
+function axisLabelOf(label) {
+  if (/^\d{4}-\d{2}$/.test(label)) return `${parseInt(label.split('-')[1], 10)}月`;
+  const p = String(label).split('-');
+  return p.length >= 3 ? `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}` : label;
+}
+
+/** 趋势柱状图配置（日/周/月） */
+function trendOption(granularity, trend) {
   return {
-    tooltip: { trigger: 'axis', ...TOOLTIP_CARD },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, ...TOOLTIP_CARD },
     legend: { bottom: 0, icon: 'circle', textStyle: { color: '#6E6E73', fontSize: 12 } },
     grid: { left: 40, right: 20, top: 20, bottom: 56 },
     xAxis: {
       type: 'category',
-      boundaryGap: false,
-      data: days,
-      axisLabel: {
-        ...AXIS_LABEL,
-        formatter: (v) => {
-          const p = String(v).split('-');
-          return p.length >= 3 ? `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}` : v;
-        },
-      },
+      data: (trend || []).map((t) => t.date),
+      axisLabel: { ...AXIS_LABEL, interval: 'auto', formatter: axisLabelOf },
       axisLine: { lineStyle: { color: '#E5E5EA' } },
       axisTick: { show: false },
     },
     yAxis: { type: 'value', minInterval: 1, axisLabel: AXIS_LABEL, splitLine: SPLIT_LINE },
     series: TREND_SERIES.map((s) => ({
       name: s.name,
-      type: 'line',
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
+      type: 'bar',
+      barMaxWidth: 14,
       data: (trend || []).map((t) => t[s.key] || 0),
-      itemStyle: { color: s.color },
-      lineStyle: { width: 2, color: s.color },
+      itemStyle: { color: s.color, borderRadius: [3, 3, 0, 0] },
     })),
   };
 }
@@ -80,7 +85,7 @@ export default function Dashboard() {
   // 概览
   const [overview, setOverview] = useState(null);
   // 趋势
-  const [days, setDays] = useState([]);
+  const [granularity, setGranularity] = useState('day');
   const [trend, setTrend] = useState([]);
 
   // 管理员操作记录
@@ -110,11 +115,10 @@ export default function Dashboard() {
     }
   }, []);
 
-  const loadTrend = useCallback(async () => {
+  const loadTrend = useCallback(async (gran) => {
     try {
-      const res = await adminDashboard({ action: 'trend' });
+      const res = await adminDashboard({ action: 'trend', granularity: gran });
       if (res.success) {
-        setDays(res.days || []);
         setTrend(res.trend || []);
       } else {
         message.error(res.error || '加载趋势数据失败');
@@ -170,7 +174,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadOverview();
-    loadTrend();
+    loadTrend('day');
   }, [loadOverview, loadTrend]);
 
   useEffect(() => {
@@ -308,10 +312,23 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* 近14天趋势 */}
-      <Card title="近 14 天趋势" style={{ marginBottom: 16 }}>
-        {days.length ? (
-          <ReactECharts option={trendOption(days, trend)} style={{ height: 320 }} />
+      {/* 趋势（日/周/月 柱状图） */}
+      <Card
+        title={`${GRANULARITY_TITLE[granularity]}趋势`}
+        extra={
+          <Segmented
+            options={GRANULARITY_OPTIONS}
+            value={granularity}
+            onChange={(v) => {
+              setGranularity(v);
+              loadTrend(v);
+            }}
+          />
+        }
+        style={{ marginBottom: 16 }}
+      >
+        {trend.length ? (
+          <ReactECharts option={trendOption(granularity, trend)} style={{ height: 320 }} />
         ) : (
           <Empty description="暂无趋势数据" style={{ padding: '40px 0' }} />
         )}

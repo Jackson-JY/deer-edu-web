@@ -55,6 +55,11 @@ export const adminDashboard = (data) => callFunction('adminDashboard', data);
 /** 管理员账号管理：列表 / 新增 / 重置密码 / 自行改密 */
 export const adminManage = (data) => callFunction('adminManage', data);
 
+// ---------- 班级管理 ----------
+
+/** 班级管理：列表 / 新建 / 重命名 / 删除 / 设置成员 */
+export const manageClasses = (data) => callFunction('manageClasses', data);
+
 // ---------- 打卡 ----------
 
 /** 发布/保存每日打卡任务（管理员） */
@@ -76,6 +81,7 @@ export default {
   assessmentGrant,
   adminDashboard,
   adminManage,
+  manageClasses,
   saveDailyTask,
   getDailyTasks,
 };

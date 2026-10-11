@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Button,
@@ -23,9 +23,12 @@ import {
   FireOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getDailyTasks, saveDailyTask, adminStats } from '../../api';
+import { getDailyTasks, saveDailyTask, adminStats, manageClasses } from '../../api';
 
 const { RangePicker } = DatePicker;
+
+// 「新建一组」模式的 key（区别于任务组真实 classKey，''=全体）
+const NEW_GROUP_KEY = '__new__';
 
 // 预设科目快捷选项（也可自定义输入任意 ≤4 字的标签，如「单词」「泛读」）
 const SUBJECT_OPTIONS = [
@@ -78,26 +81,78 @@ export default function Checkin() {
   const [weekLoading, setWeekLoading] = useState(false);
   const [weekRows, setWeekRows] = useState([]);
 
-  // 加载指定日期的任务
+  // 班级（发布对象）
+  const [classes, setClasses] = useState([]);
+
+  // 当日任务组（支持同日多组：全体/班级各一组）
+  const [dayTasks, setDayTasks] = useState([]);
+  const [activeKey, setActiveKey] = useState(NEW_GROUP_KEY); // 当前编辑组：''=全体，classKey，NEW_GROUP_KEY=新建
+
+  const classIdToName = useMemo(() => {
+    const m = {};
+    classes.forEach((c) => {
+      m[c._id] = c.name;
+    });
+    return m;
+  }, [classes]);
+
+  /** 发布对象标签：[] = 全体学生 */
+  const groupLabel = useCallback(
+    (classIds) => {
+      if (!classIds || classIds.length === 0) return '全体学生';
+      return classIds.map((cid) => classIdToName[cid] || '未知班级').join('、');
+    },
+    [classIdToName]
+  );
+
+  // 加载班级列表（发布对象选择用）
+  const loadClasses = useCallback(async () => {
+    try {
+      const res = await manageClasses({ action: 'list' });
+      if (res.success) setClasses(res.classes || []);
+    } catch (e) {
+      // 静默失败：班级列表仅辅助选择
+    }
+  }, []);
+
+  // 把某个任务组（或空）填入表单
+  const fillForm = (task) => {
+    if (task) {
+      const items = (task.items || []).map((it) => ({
+        id: it.id,
+        subject: normalizeSubject(it.subject),
+        content: it.content,
+        suggestMinutes: it.suggestMinutes,
+      }));
+      form.setFieldsValue({
+        classIds: Array.isArray(task.classIds) ? task.classIds : [],
+        items: items.length ? items : [{}],
+      });
+    } else {
+      form.setFieldsValue({ classIds: [], items: [{}] });
+    }
+  };
+
+  // 加载指定日期的全部任务组，默认编辑第一组（preferKey 优先）
   const loadTask = useCallback(
-    async (date) => {
+    async (date, preferKey) => {
       setLoading(true);
       try {
         const res = await getDailyTasks({ action: 'getByDate', date: fmtDate(date) });
-        if (res.success && res.task) {
-          const items = (res.task.items || []).map((it) => ({
-            id: it.id,
-            subject: normalizeSubject(it.subject),
-            content: it.content,
-            suggestMinutes: it.suggestMinutes,
-          }));
-          form.setFieldsValue({ items: items.length ? items : [{}] });
-        } else {
-          form.setFieldsValue({ items: [{}] });
+        const tasks = res.success ? res.tasks || [] : [];
+        setDayTasks(tasks);
+        let pick = null;
+        if (preferKey !== undefined) {
+          pick = tasks.find((t) => t.classKey === preferKey) || null;
         }
+        if (!pick && tasks.length) pick = tasks[0];
+        setActiveKey(pick ? pick.classKey : NEW_GROUP_KEY);
+        fillForm(pick);
       } catch (e) {
         message.error('加载任务失败: ' + e.message);
-        form.setFieldsValue({ items: [{}] });
+        setDayTasks([]);
+        setActiveKey(NEW_GROUP_KEY);
+        form.setFieldsValue({ classIds: [], items: [{}] });
       } finally {
         setLoading(false);
       }
@@ -147,11 +202,23 @@ export default function Checkin() {
   }, [selectedDate, loadTask]);
 
   useEffect(() => {
+    loadClasses();
+  }, [loadClasses]);
+
+  useEffect(() => {
     loadHistory();
     loadWeekStats(weekRange);
   }, [loadHistory, loadWeekStats, weekRange]);
 
-  // 保存任务
+  // 切换编辑的任务组
+  const switchGroup = (key) => {
+    if (key === activeKey) return;
+    setActiveKey(key);
+    const t = key === NEW_GROUP_KEY ? null : dayTasks.find((x) => x.classKey === key) || null;
+    fillForm(t);
+  };
+
+  // 保存任务（按发布对象 upsert：classIds 空=全体）
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
@@ -160,10 +227,12 @@ export default function Checkin() {
         message.warning('至少需要一项任务内容');
         return;
       }
+      const classIds = values.classIds || [];
       setSaving(true);
       const res = await saveDailyTask({
         action: 'save',
         date: fmtDate(selectedDate),
+        classIds,
         items: items.map((it, i) => ({
           id: it.id || `t${i + 1}`,
           subject: (it.subject || '听力').trim().slice(0, 4),
@@ -172,7 +241,11 @@ export default function Checkin() {
         })),
       });
       if (res.success) {
-        message.success(res.message || '已保存');
+        message.success(
+          `${res.message || '已保存'}（${groupLabel(classIds)}可见）`
+        );
+        const savedKey = classIds.slice().sort().join(',');
+        loadTask(selectedDate, savedKey); // 刷新任务组并定位到刚保存的一组
         loadHistory(); // 刷新历史
       } else {
         message.error(res.error || '保存失败');
@@ -185,20 +258,23 @@ export default function Checkin() {
     }
   };
 
-  // 复制昨日
+  // 复制昨日（取昨日第一组任务的 items，发布对象以当前表单为准）
   const handleCopyYesterday = async () => {
     const yesterday = selectedDate.subtract(1, 'day');
     try {
       const res = await getDailyTasks({ action: 'getByDate', date: fmtDate(yesterday) });
-      if (res.success && res.task) {
-        const items = (res.task.items || []).map((it) => ({
+      const src = (res.success && res.task) || (res.success && res.tasks && res.tasks[0]) || null;
+      if (src) {
+        const items = (src.items || []).map((it) => ({
           id: `t${Date.now()}_${Math.random()}`,
           subject: normalizeSubject(it.subject),
           content: it.content,
           suggestMinutes: it.suggestMinutes,
         }));
         form.setFieldsValue({ items: items.length ? items : [{}] });
-        message.success(`已复制 ${fmtDate(yesterday)} 的 ${items.length} 项任务`);
+        message.success(
+          `已复制 ${fmtDate(yesterday)}（${groupLabel(src.classIds)}）的 ${items.length} 项任务`
+        );
       } else {
         message.info(`${fmtDate(yesterday)} 没有已发布任务`);
       }
@@ -212,15 +288,16 @@ export default function Checkin() {
     if (!dateStr) return;
     try {
       const res = await getDailyTasks({ action: 'getByDate', date: dateStr });
-      if (res.success && res.task) {
-        const items = (res.task.items || []).map((it) => ({
+      const src = (res.success && res.task) || (res.success && res.tasks && res.tasks[0]) || null;
+      if (src) {
+        const items = (src.items || []).map((it) => ({
           id: `t${Date.now()}_${Math.random()}`,
           subject: normalizeSubject(it.subject),
           content: it.content,
           suggestMinutes: it.suggestMinutes,
         }));
         form.setFieldsValue({ items: items.length ? items : [{}] });
-        message.success(`已复制 ${dateStr} 的 ${items.length} 项任务`);
+        message.success(`已复制 ${dateStr}（${groupLabel(src.classIds)}）的 ${items.length} 项任务`);
       } else {
         message.info(`${dateStr} 没有任务`);
       }
@@ -364,6 +441,31 @@ export default function Checkin() {
         style={{ marginBottom: 24 }}
       >
         <Spin spinning={loading}>
+          {dayTasks.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <Space wrap>
+                <span style={{ color: '#8E8E93', fontSize: 13 }}>当日任务组：</span>
+                {dayTasks.map((t) => (
+                  <Button
+                    key={t.classKey || 'all'}
+                    size="small"
+                    type={t.classKey === activeKey ? 'primary' : 'default'}
+                    onClick={() => switchGroup(t.classKey)}
+                  >
+                    {groupLabel(t.classIds)}（{(t.items || []).length}项）
+                  </Button>
+                ))}
+                <Button
+                  size="small"
+                  type={activeKey === NEW_GROUP_KEY ? 'primary' : 'dashed'}
+                  onClick={() => switchGroup(NEW_GROUP_KEY)}
+                >
+                  + 新建一组
+                </Button>
+              </Space>
+            </div>
+          )}
+
           <div style={{ marginBottom: 16 }}>
             <Space>
               <Button icon={<CopyOutlined />} onClick={handleCopyYesterday}>
@@ -371,12 +473,12 @@ export default function Checkin() {
               </Button>
               <Select
                 placeholder="从历史记录复制"
-                style={{ width: 200 }}
+                style={{ width: 260 }}
                 loading={historyLoading}
                 onChange={handleCopyFromHistory}
                 allowClear
                 options={historyList.map((h) => ({
-                  label: `${h.date}（${h.items.length}项 · ${h.totalMinutes}分钟）`,
+                  label: `${h.date}（${groupLabel(h.classIds)} · ${h.items.length}项 · ${h.totalMinutes}分钟）`,
                   value: h.date,
                 }))}
               />
@@ -384,6 +486,21 @@ export default function Checkin() {
           </div>
 
           <Form form={form} initialValues={{ items: [{}] }}>
+            <Form.Item
+              name="classIds"
+              label="发布对象"
+              extra="不选班级 = 全体学生可见；同一发布对象每天仅保留一组任务，重复保存将覆盖该组"
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="默认全体学生"
+                options={classes.map((c) => ({
+                  value: c._id,
+                  label: `${c.name}（${c.studentCount || 0}人）`,
+                }))}
+              />
+            </Form.Item>
             <Form.List name="items">
               {(fields, { add, remove }) => (
                 <>

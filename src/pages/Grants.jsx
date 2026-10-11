@@ -15,6 +15,7 @@ import {
   Space,
   Statistic,
   Empty,
+  Segmented,
   message,
 } from 'antd';
 import {
@@ -79,11 +80,13 @@ export default function Grants() {
   const [loading, setLoading] = useState(false);
   const [grants, setGrants] = useState([]);
   const [students, setStudents] = useState([]);
+  const [classes, setClasses] = useState([]);
 
   // 授权 / 调整弹窗
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null); // null=新增授权，否则为被调整的学生行
   const [submitting, setSubmitting] = useState(false);
+  const [grantMode, setGrantMode] = useState('student'); // 新增授权时：student=按学生，class=按班级
 
   const loadGrants = useCallback(async () => {
     setLoading(true);
@@ -92,6 +95,7 @@ export default function Grants() {
       if (res.success) {
         setGrants(res.grants || []);
         setStudents(res.students || []);
+        setClasses(res.classes || []);
       } else {
         message.error(res.error || '加载授权列表失败');
       }
@@ -140,8 +144,43 @@ export default function Grants() {
     }));
   }, [grants, students]);
 
+  const classIdToName = useMemo(() => {
+    const m = {};
+    (classes || []).forEach((c) => {
+      m[c._id] = c.name;
+    });
+    return m;
+  }, [classes]);
+
+  // 各班级人数（按学生 classIds 统计）
+  const classCountMap = useMemo(() => {
+    const m = {};
+    (students || []).forEach((s) => {
+      (s.classIds || []).forEach((cid) => {
+        m[cid] = (m[cid] || 0) + 1;
+      });
+    });
+    return m;
+  }, [students]);
+
+  const renderClassTags = (classIds) => {
+    if (!classIds || classIds.length === 0) {
+      return <span style={{ color: '#8E8E93', fontSize: 12 }}>未分班</span>;
+    }
+    return (
+      <Space size={4} wrap>
+        {classIds.map((cid) => (
+          <Tag key={cid} color="cyan">
+            {classIdToName[cid] || '未知班级'}
+          </Tag>
+        ))}
+      </Space>
+    );
+  };
+
   const openCreate = () => {
     setEditing(null);
+    setGrantMode('student');
     form.resetFields();
     setModalOpen(true);
   };
@@ -161,15 +200,29 @@ export default function Grants() {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
-      const res = await assessmentGrant({
-        action: 'grant',
-        userId: editing ? editing.userId : values.userId,
-        totalQuota: values.totalQuota,
-        expireAt: values.expireAt ? values.expireAt.format('YYYY-MM-DD') : '',
-        note: values.note || '',
-      });
+      let res;
+      if (!editing && grantMode === 'class') {
+        // 按班级批量授权：后端自动展开，已有授权次数累加、截止时间取更晚者
+        res = await assessmentGrant({
+          action: 'grantBatch',
+          classIds: values.classIds,
+          totalQuota: values.totalQuota,
+          expireAt: values.expireAt ? values.expireAt.format('YYYY-MM-DD') : '',
+          note: values.note || '',
+        });
+      } else {
+        res = await assessmentGrant({
+          action: 'grant',
+          userId: editing ? editing.userId : values.userId,
+          totalQuota: values.totalQuota,
+          expireAt: values.expireAt ? values.expireAt.format('YYYY-MM-DD') : '',
+          note: values.note || '',
+        });
+      }
       if (res.success) {
-        message.success(res.message || (editing ? '授权已调整' : '授权成功'));
+        message.success(
+          res.message || (editing ? '授权已调整' : grantMode === 'class' ? '班级授权完成' : '授权成功')
+        );
         setModalOpen(false);
         loadGrants();
       } else {
@@ -231,6 +284,12 @@ export default function Grants() {
       key: 'phone',
       width: 130,
       render: (v) => v || '—',
+    },
+    {
+      title: '班级',
+      key: 'classIds',
+      width: 180,
+      render: (_, row) => renderClassTags(row.classIds),
     },
     {
       title: '授权状态',
@@ -372,21 +431,56 @@ export default function Grants() {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
           {!editing && (
-            <Form.Item
-              name="userId"
-              label="学生"
-              rules={[{ required: true, message: '请选择学生' }]}
-            >
-              <Select
-                showSearch
-                optionFilterProp="label"
-                placeholder="选择学生"
-                options={(students || []).map((s) => ({
-                  value: s.userId,
-                  label: `${s.nickName || '未命名用户'}${s.phone ? `（${s.phone}）` : ''}`,
-                }))}
-              />
-            </Form.Item>
+            <>
+              <Form.Item label="授权方式">
+                <Segmented
+                  value={grantMode}
+                  onChange={(v) => {
+                    setGrantMode(v);
+                    form.setFieldsValue({ userId: undefined, classIds: undefined });
+                  }}
+                  options={[
+                    { label: '按学生', value: 'student' },
+                    { label: '按班级', value: 'class' },
+                  ]}
+                />
+              </Form.Item>
+              {grantMode === 'student' ? (
+                <Form.Item
+                  name="userId"
+                  label="学生"
+                  rules={[{ required: true, message: '请选择学生' }]}
+                >
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="选择学生"
+                    options={(students || []).map((s) => ({
+                      value: s.userId,
+                      label: `${s.nickName || '未命名用户'}${s.phone ? `（${s.phone}）` : ''}`,
+                    }))}
+                  />
+                </Form.Item>
+              ) : (
+                <Form.Item
+                  name="classIds"
+                  label="班级（可多选）"
+                  rules={[{ required: true, message: '请选择至少一个班级' }]}
+                  extra="班级内学生将获得授权；已有授权的学生次数累加，截止时间取更晚者"
+                >
+                  <Select
+                    mode="multiple"
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="选择一个或多个班级"
+                    options={(classes || []).map((c) => ({
+                      value: c._id,
+                      label: `${c.name}（${classCountMap[c._id] || 0}人）`,
+                    }))}
+                  />
+                </Form.Item>
+              )}
+            </>
           )}
           <Form.Item
             name="totalQuota"
