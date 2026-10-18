@@ -340,7 +340,7 @@ export default function Students() {
             style={{ width: 200 }}
             value={filterClass || undefined}
             onChange={(v) => setFilterClass(v || '')}
-            options={classes.map((c) => ({ label: `${c.name}（${c.studentCount}）`, value: c._id }))}
+            options={classes.map((c) => ({ label: `${c.name}（${c.studentCount ?? 0}）`, value: c._id }))}
           />
         </Space>
       </Card>
