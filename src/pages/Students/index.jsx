@@ -167,7 +167,10 @@ export default function Students() {
 
   const handleCreateClass = async () => {
     const name = newClassName.trim();
-    if (!name) return;
+    if (!name) {
+      message.warning('请先输入班级名称');
+      return;
+    }
     try {
       const res = await manageClasses({ action: 'create', name });
       if (res.success) {

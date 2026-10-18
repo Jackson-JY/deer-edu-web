@@ -151,11 +151,11 @@ body {
   font-weight: 500;
 }
 
-.ant-btn-primary:not(:disabled):not(.ant-btn-disabled) {
+.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):not(.ant-btn-background-ghost) {
   background: var(--brand);
 }
 
-.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover {
+.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):not(.ant-btn-background-ghost):hover {
   background: var(--brand-dark);
 }
 
