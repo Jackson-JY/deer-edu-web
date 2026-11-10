@@ -677,3 +677,139 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ==================== 移动端响应式 ==================== */
+
+/* 汉堡按钮 */
+.admin-hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.admin-hamburger:hover {
+  background: var(--fill);
+}
+
+.admin-hamburger:active {
+  background: var(--line);
+}
+
+/* 顶栏用户区：桌面有文字，手机只显示头像 */
+.admin-user span {
+  display: inline;
+}
+
+/* 大屏：侧边栏显示 */
+@media (min-width: 992px) {
+  .admin-hamburger {
+    display: none;
+  }
+}
+
+/* 中屏以下：汉堡出现 + 内容区收紧 */
+@media (max-width: 991.99px) {
+  .page-container {
+    padding: 16px 14px 24px;
+  }
+
+  .page-title {
+    font-size: 18px;
+  }
+
+  .page-header {
+    margin-bottom: 12px;
+  }
+
+  .admin-header {
+    padding: 0 12px;
+    height: 52px;
+  }
+
+  .admin-user span {
+    display: none;
+  }
+
+  .chart-box {
+    padding: 14px;
+  }
+}
+
+/* 手机竖屏（≤ 480px）：日历/Modal 进一步收紧 */
+@media (max-width: 480px) {
+  .page-container {
+    padding: 12px 10px 20px;
+  }
+
+  .page-title {
+    font-size: 16px;
+  }
+
+  .admin-header {
+    height: 48px;
+  }
+
+  /* antd Drawer 内 logo 对齐 */
+  .ant-drawer-body .admin-logo {
+    padding: 0 16px;
+  }
+
+  /* antd Modal 全宽（ConfigProvider 已设 xs: '95vw'，这里再兜） */
+  .ant-modal {
+    max-width: calc(100vw - 24px) !important;
+    margin-top: 12px !important;
+  }
+
+  .ant-modal-content {
+    max-height: calc(100vh - 24px);
+    overflow: hidden;
+  }
+
+  /* 弹窗表单里的 Select / DatePicker 撑满 */
+  .ant-modal-body .ant-select,
+  .ant-modal-body .ant-picker,
+  .ant-modal-body .ant-input,
+  .ant-modal-body .ant-input-number {
+    max-width: 100%;
+  }
+
+  /* 日历单元格压缩 */
+  .sched-calendar .ant-picker-calendar-date {
+    min-height: 70px;
+    padding: 4px 6px 6px;
+    margin: 0 2px;
+  }
+
+  .cal-cell-body {
+    min-height: 46px;
+    margin-top: 2px;
+  }
+
+  .cal-chip-title {
+    display: none;
+  }
+
+  /* 表格容器加滚动条（ConfigProvider Table scroll 兜底） */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .ant-table {
+    min-width: 520px;
+  }
+
+  /* Card extra 区域（日/周/月切换 / Segment 选项） */
+  .ant-card-extra {
+    padding-top: 4px;
+  }
+}

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Layout, Menu, Dropdown, Avatar, message } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Layout, Menu, Dropdown, Avatar, message, Grid, Drawer } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   CalendarOutlined,
@@ -12,11 +12,13 @@ import {
   SafetyOutlined,
   UsergroupAddOutlined,
   LockOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { getAdminInfo, clearAuth } from '../cloudbase';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const { Sider, Header, Content } = Layout;
+const { useBreakpoint } = Grid;
 
 const menuItems = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '数据看板' },
@@ -33,6 +35,14 @@ export default function AdminLayout() {
   const location = useLocation();
   const admin = getAdminInfo();
   const [pwdOpen, setPwdOpen] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // 路由切换后，移动端自动关闭抽屉
+  useEffect(() => {
+    if (isMobile) setDrawerOpen(false);
+  }, [location.pathname, isMobile]);
 
   const selectedKey = useMemo(() => {
     const path = location.pathname;
@@ -64,25 +74,59 @@ export default function AdminLayout() {
     ],
   };
 
+  const menu = (
+    <Menu
+      className="admin-menu"
+      mode="inline"
+      selectedKeys={[selectedKey]}
+      items={menuItems}
+      onClick={({ key }) => navigate(key)}
+    />
+  );
+
+  const siderLogo = (
+    <div className="admin-logo">
+      <span className="admin-logo-mark">
+        <img src="/logo.jpg" alt="Deer Edu" />
+      </span>
+      <span className="admin-logo-text">Deer Edu</span>
+    </div>
+  );
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={216} breakpoint="lg" collapsedWidth={0} className="admin-sider">
-        <div className="admin-logo">
-          <span className="admin-logo-mark">
-            <img src="/logo.jpg" alt="Deer Edu" />
-          </span>
-          <span className="admin-logo-text">Deer Edu</span>
-        </div>
-        <Menu
-          className="admin-menu"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-        />
-      </Sider>
+      {isMobile ? (
+        // 手机端：抽屉式侧边栏
+        <Drawer
+          placement="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          width={240}
+          styles={{ body: { padding: 0 } }}
+          drawerStyle={{ background: '#fff' }}
+          closable={false}
+        >
+          {siderLogo}
+          {menu}
+        </Drawer>
+      ) : (
+        // 桌面端：常驻侧边栏
+        <Sider width={216} breakpoint="lg" collapsedWidth={0} className="admin-sider">
+          {siderLogo}
+          {menu}
+        </Sider>
+      )}
       <Layout>
         <Header className="admin-header">
+          {isMobile && (
+            <button
+              className="admin-hamburger"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="打开菜单"
+            >
+              <MenuOutlined />
+            </button>
+          )}
           <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>
             <div className="admin-user">
               <Avatar size={28} icon={<UserOutlined />} style={{ background: '#12B7A8', flexShrink: 0 }} />

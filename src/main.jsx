@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, Grid } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -110,12 +110,36 @@ const theme = {
   },
 };
 
+/**
+ * 用 ConfigProvider 全局注入响应式默认值：
+ * - Modal：桌面 520，手机 95vw
+ * - Drawer：桌面 520（学生详情）/ 520（班级管理），手机 92vw
+ * - Table：所有表格横向可滚动
+ * 各页面传的 props 会覆盖这里的默认值。
+ */
+function ResponsiveProvider({ children }) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.lg;
+
+  return (
+    <ConfigProvider
+      locale={zhCN}
+      theme={theme}
+      modalProps={{ width: isMobile ? '95vw' : 520, ...(isMobile ? { centered: true, top: 16 } : {}) }}
+      drawerProps={{ width: isMobile ? '92vw' : undefined, placement: 'right' }}
+      tableProps={{ scroll: { x: 'max-content' } }}
+    >
+      {children}
+    </ConfigProvider>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ConfigProvider locale={zhCN} theme={theme}>
+    <ResponsiveProvider>
       <HashRouter>
         <App />
       </HashRouter>
-    </ConfigProvider>
+    </ResponsiveProvider>
   </React.StrictMode>
 );
