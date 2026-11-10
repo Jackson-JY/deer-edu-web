@@ -281,6 +281,7 @@ export default function Students() {
         <Space>
           <Avatar size="small" src={r.avatarUrl} icon={<UserOutlined />} />
           <span>{v || '未命名用户'}</span>
+          {r.isAdmin && <Tag color="gold" style={{ margin: 0 }}>管理员</Tag>}
         </Space>
       ),
     },
@@ -483,6 +484,7 @@ export default function Students() {
                       <Space size={6}>
                         <Avatar size={18} src={s.avatarUrl} icon={<UserOutlined />} />
                         <span style={{ fontSize: 13 }}>{s.nickName || '未命名用户'}</span>
+                        {s.isAdmin && <Tag color="gold" style={{ margin: 0 }}>管理员</Tag>}
                       </Space>
                     </Checkbox>
                   ))}
